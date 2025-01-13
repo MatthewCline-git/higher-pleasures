@@ -3,5 +3,7 @@ venv/
 .env
 ../higher-pleasures-secrets/
 # Python cache files
-
+*.py[cod]
+*$py.class
+*.pyc
 __pycache__/
