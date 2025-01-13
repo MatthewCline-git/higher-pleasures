@@ -15,7 +15,10 @@ def load_config():
 
     required_vars = {
         "SPREADSHEET_ID": os.getenv("SPREADSHEET_ID"),
-        "SHEET_NAME": os.getenv("SHEET_NAME"),
+        "FRIEND_SHEET_NAME": os.getenv("FRIEND_SHEET_NAME"),
+        "MY_SHEET_NAME": os.getenv("MY_SHEET_NAME"),
+        "FRIEND_TELEGRAM_ID": os.getenv("FRIEND_TELEGRAM_ID"),
+        "MY_TELEGRAM_ID": os.getenv("MY_TELEGRAM_ID"),
         "CREDENTIALS_PATH": os.getenv("CREDENTIALS_PATH"),
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
         "TELEGRAM_BOT_API_KEY": os.getenv("TELEGRAM_BOT_API_KEY"),
@@ -34,25 +37,32 @@ def main():
     # Load configuration
     config = load_config()
 
-    # Initialize components
-    sheets_client = GoogleSheetsClient(
-        spreadsheet_id=config["SPREADSHEET_ID"],
-        sheet_name=config["SHEET_NAME"],
-        credentials_path=config["CREDENTIALS_PATH"],
-    )
+    user_sheets = {
+        int(config["FRIEND_TELEGRAM_ID"]): config["FRIEND_SHEET_NAME"],
+        int(config["MY_TELEGRAM_ID"]): config["MY_SHEET_NAME"],
+    }
 
-    sheets_client.initialize_year_structure()
+    trackers = {}
+    for user_id, sheet_name in user_sheets.items():
+        # Initialize components
+        sheets_client = GoogleSheetsClient(
+            spreadsheet_id=config["SPREADSHEET_ID"],
+            sheet_name=sheet_name,
+            credentials_path=config["CREDENTIALS_PATH"],
+        )
 
-    activity_parser = OpenAIActivityParser(
-        api_key=config["OPENAI_API_KEY"], confidence_threshold=0.7
-    )
+        sheets_client.initialize_year_structure()
 
-    # Initialize tracker
-    tracker = ActivityTracker(sheets_client, activity_parser)
+        activity_parser = OpenAIActivityParser(
+            api_key=config["OPENAI_API_KEY"], confidence_threshold=0.7
+        )
+
+        trackers[user_id] = ActivityTracker(sheets_client, activity_parser)
 
     telegram_handler = TelegramHandler(
         token=config["TELEGRAM_BOT_API_KEY"],
-        activity_tracker=tracker,
+        activity_trackers=trackers,
+        allowed_user_ids=list(user_sheets.keys())
     )
 
     print("🤖 Starting Telegram bot...")
