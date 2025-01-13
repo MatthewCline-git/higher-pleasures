@@ -1,12 +1,18 @@
-from datetime import datetime, timedelta
-from typing import List, Optional, Tuple, Generator
-from dataclasses import dataclass
-from enum import Enum
+import json
 import logging
+import os
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from difflib import get_close_matches
+from enum import Enum
+from typing import Generator, List, Optional, Tuple
+
+from dotenv import load_dotenv
+from google.api_core import retry
+from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from google.oauth2 import service_account
-from google.api_core import retry
+from openai import OpenAI
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -38,12 +44,117 @@ class ActivityTracker:
     SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
     BATCH_SIZE = 50
 
-    def __init__(self, credentials_path: str, spreadsheet_id: str, sheet_name: str):
+    def __init__(
+        self,
+        credentials_path: str | None = None,
+        spreadsheet_id: str | None = None,
+        sheet_name: str | None = None,
+        openai_api_key: str | None = None,
+        confidence_threshold: float = 0.7,
+    ):
         """Initialize the ActivityTracker with required credentials and sheet info"""
-        self.spreadsheet_id = spreadsheet_id
-        self.sheet_name = sheet_name
-        self.credentials_path = credentials_path
+
+        load_dotenv()
+
+        SPREADSHEET_ID = spreadsheet_id or os.getenv("SPREADSHEET_ID")
+        SHEET_NAME = sheet_name or os.getenv("SHEET_NAME")
+        CREDENTIALS_PATH = credentials_path or os.getenv("CREDENTIALS_PATH")
+        OPENAI_API_KEY = openai_api_key or os.getenv("OPENAI_API_KEY")
+
+        if not all([SPREADSHEET_ID, SHEET_NAME, CREDENTIALS_PATH, OPENAI_API_KEY]):
+            raise EnvironmentError("Missing required environment variables")
+
+        self.spreadsheet_id = SPREADSHEET_ID
+        self.sheet_name = SHEET_NAME
+        self.credentials_path = CREDENTIALS_PATH
         self.service = self._build_sheets_service()
+        self.client = OpenAI(api_key=OPENAI_API_KEY)
+        self.confidence_threshold = confidence_threshold
+
+    def _generate_system_prompt(self) -> str:
+        return f"""Extract activity and duration from the message. 
+Existing activity categories are: {", ".join(self.get_activity_columns())}
+
+If the described activity closely matches an existing category, use that category.
+Always convert duration to hours (e.g., 30 minutes = 0.5 hours). If there is no concrete duration number in the input, estimate.
+
+Examples:
+Input: "Went for a run this morning for 30 minutes"
+Response: {{
+    "activity": "Running",
+    "duration": 0.5,
+    "confidence": 1.0,
+    "matched_category": "Running"
+}}
+
+Input: "Did some weightlifting for an hour and a half"
+Response: {{
+    "activity": "Working out",
+    "duration": 1.5,
+    "confidence": 0.9,
+    "matched_category": "Working out"
+}}
+
+Input: "Read War and Peace for 45 mins"
+Response: {{
+    "activity": "Reading",
+    "duration": 0.75,
+    "confidence": 1.0,
+    "matched_category": "Reading"
+}}
+
+Input: "Practiced guitar for two hours"
+Response: {{
+    "activity": "Guitar",
+    "duration": 2.0,
+    "confidence": 0.2,
+    "matched_category": null
+}}
+
+Input: "Meditated before bed for twenty minutes"
+Response: {{
+    "activity": "Meditation",
+    "duration": 0.33,
+    "confidence": 0.95,
+    "matched_category": "Meditation"
+}}
+
+Input: "Did calisthenics in the park this afternoon"
+Response: {{
+    "activity": "Calisthenics",
+    "duration": 1.0,
+    "confidence": 0.9,
+    "matched_category": "Working out"
+}}
+
+Return JSON with:
+- activity: The activity name (use matched_category if confidence > {self.confidence_threshold})
+- duration: Duration in hours (convert minutes to decimal hours)
+- confidence: How confident (0-1) this matches an existing category
+- matched_category: The existing category it matches, if any"""
+
+    def parse_message(self, message: str) -> dict:
+        """Parse a natural language message into activity and duration"""
+        response = self.client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": self._generate_system_prompt()},
+                {"role": "user", "content": message},
+            ],
+            response_format={"type": "json_object"},
+        )
+        result = json.loads(response.choices[0].message.content)
+
+        if (
+            result.get("matched_category")
+            and result.get("confidence", 0) > self.confidence_threshold
+        ):
+            result["activity"] = result["matched_category"]
+
+        return {
+            "activity": result["activity"],
+            "duration": result["duration"],
+        }
 
     def _build_sheets_service(self):
         """Create and return an authorized Sheets API service object"""
@@ -302,20 +413,12 @@ class ActivityTracker:
 
 
 if __name__ == "__main__":
-    import os
-    from dotenv import load_dotenv
-
-    load_dotenv()
-
-    SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
-    SHEET_NAME = os.getenv("SHEET_NAME")
-    CREDENTIALS_PATH = os.getenv("CREDENTIALS_PATH")
-
-    if not all([SPREADSHEET_ID, SHEET_NAME, CREDENTIALS_PATH]):
-        raise EnvironmentError("Missing required environment variables")
-
-    tracker = ActivityTracker(CREDENTIALS_PATH, SPREADSHEET_ID, SHEET_NAME)
+    tracker = ActivityTracker()
     tracker.initialize_year_structure()
+
+    result = tracker.parse_message("Did laps in the pool from 10am to noon")
     tracker.process_new_entry(
-        date=datetime.now() + timedelta(days=2), activity="Reading", duration=1.5
+        date=datetime.now() + timedelta(days=2),
+        activity=result["activity"],
+        duration=result["duration"],
     )
