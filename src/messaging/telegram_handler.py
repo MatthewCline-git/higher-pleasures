@@ -1,5 +1,3 @@
-# src/messaging/telegram_handler.py
-
 import logging
 from datetime import datetime
 from typing import Optional, Callable
