@@ -1,0 +1,8 @@
+[project]
+name = "higher_pleasures"
+version = "0.1.0"
+description = "Natural language activity tracker"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
