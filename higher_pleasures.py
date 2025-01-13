@@ -1,13 +1,14 @@
-import logging
 from datetime import datetime, timedelta
+from typing import List, Optional, Tuple, Generator
 from dataclasses import dataclass
 from enum import Enum
-from google.oauth2 import service_account
+import logging
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from typing import List, Optional, Tuple, Generator
+from google.oauth2 import service_account
 from google.api_core import retry
 
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ class EntryType(Enum):
 class ActivityTracker:
     SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
     BATCH_SIZE = 50
-
+    
     def __init__(self, credentials_path: str, spreadsheet_id: str, sheet_name: str):
         """Initialize the ActivityTracker with required credentials and sheet info"""
         self.spreadsheet_id = spreadsheet_id
@@ -78,7 +79,7 @@ class ActivityTracker:
         except Exception as e:
             logger.error(f"Error reading current dates: {e}")
             raise SheetError(f"Failed to read current dates: {str(e)}")
-    
+
     @retry.Retry()
     def clear_sheet(self) -> None:
         """Clear all content from sheet with retry logic"""
@@ -91,110 +92,66 @@ class ActivityTracker:
         except Exception as e:
             logger.error(f"Error clearing sheet: {e}")
             raise SheetError(f"Failed to clear sheet: {str(e)}")
-        
-    def get_expected_dates(self, year):
-        """Generate the expected sequence of dates and week headers"""
-        expected = []
-        rows_batch = []  # Store the actual rows we'll need for initialization
-        current_date = datetime(year, 1, 1)
-        current_week = None
 
-        while current_date.year == year:
-            week_number = current_date.isocalendar()[1]
-
-            if week_number != current_week:
-                week_header = f"Week {week_number}"
-                expected.append(week_header)
-                rows_batch.append([week_header])
-                current_week = week_number
-
-            date_str = f"{current_date.strftime('%A, %B %-d')}"
-            expected.append(date_str)
-            rows_batch.append([date_str])
-            current_date += timedelta(days=1)
-
-        return expected, rows_batch
-
-    def initialize_year_structure(self, year=None, force=False):
+    def initialize_year_structure(self, year: Optional[int] = None, force: bool = False) -> None:
         """Initialize the spreadsheet with all weeks and days of the year."""
-        if year is None:
-            year = datetime.now().year
-
-        expected_dates, rows_to_write = self.get_expected_dates(year)
-
+        year = year or datetime.now().year
+        logger.info(f"Initializing year structure for {year}")
+        
         if not force:
             current_dates = self.get_current_dates()
-            if len(current_dates) == len(expected_dates):
-                if all(
-                    current == expected
-                    for current, expected in zip(current_dates, expected_dates)
-                ):
-                    print("Sheet is already properly initialized.")
-                    return
-                else:
-                    print("Content mismatch found.")
-            else:
-                print(
-                    f"Length mismatch: current={len(current_dates)}, expected={len(expected_dates)}"
-                )
+            date_gen = self._generate_dates(year)
+            expected_dates = [date_str for _, date_str in date_gen]
+            
+            if self._validate_current_structure(current_dates, expected_dates):
+                logger.info("Sheet is already properly initialized")
+                return
 
-        print("Initializing sheet...")
+        self._perform_initialization(year)
 
-        # Clear and initialize
+    def _validate_current_structure(self, current: List[str], expected: List[str]) -> bool:
+        """Validate if current sheet structure matches expected structure"""
+        return len(current) == len(expected) and all(
+            curr == exp for curr, exp in zip(current, expected)
+        )
+
+    def _perform_initialization(self, year: int) -> None:
+        """Perform the actual initialization of the sheet"""
+        logger.info("Starting sheet initialization")
         self.clear_sheet()
         self.update_header_row()
-
-        # Write rows in batches of 50
-        for i in range(0, len(rows_to_write), 50):
-            batch = rows_to_write[i : i + 50]
+        
+        batch = []
+        for entry_type, value in self._generate_dates(year):
+            batch.append([value])
+            
+            if len(batch) >= self.BATCH_SIZE:
+                self.append_to_sheet_formatted(batch)
+                batch = []
+        
+        if batch:  # Don't forget remaining entries
             self.append_to_sheet_formatted(batch)
+        
+        logger.info("Sheet initialization completed successfully")
 
-        print("Initialization complete.")
-
-    def append_to_sheet_formatted(self, values):
-        """Append rows to the sheet with explicit text formatting"""
-        result = (
-            self.service.spreadsheets()
-            .values()
-            .append(
+    @retry.Retry()
+    def append_to_sheet_formatted(self, values: List[List[str]]) -> None:
+        """Append rows to the sheet with retry logic"""
+        try:
+            self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id,
                 range=f"{self.sheet_name}!A1",
                 valueInputOption="RAW",
                 insertDataOption="INSERT_ROWS",
-                body={"values": values},
-            )
-            .execute()
-        )
-
-    def update_header_row(self, activities=None):
-        """Update the header row with all activities"""
-        if activities is None:
-            activities = []
-
-        header_row = ["Date"] + activities
-
-        body = {"values": [header_row]}
-
-        range_name = f"{self.sheet_name}!A1:{chr(65 + len(header_row))}{1}"
-
-        try:
-            self.service.spreadsheets().values().update(
-                spreadsheetId=self.spreadsheet_id,
-                range=range_name,
-                valueInputOption="USER_ENTERED",
-                body=body,
+                body={'values': values}
             ).execute()
         except Exception as e:
-            print(f"Error updating header row: {e}")
-            raise
+            logger.error(f"Error appending to sheet: {e}")
+            raise SheetError(f"Failed to append to sheet: {str(e)}")
 
-    def update_activities_header(self, activity):
-        existing_activities = self.get_activity_columns()
-        if activity not in existing_activities:
-            activities = existing_activities + [activity]
-            self.update_header_row(activities)
-
-    def get_date_row_index(self, date):
+    @retry.Retry()
+    def get_date_row_index(self, date: datetime) -> Optional[int]:
+        """Find the row index for a given date"""
         date_str = date.strftime("%A, %B %d")
         range_name = f"{self.sheet_name}!A:A"
         try:
@@ -211,53 +168,13 @@ class ActivityTracker:
                         return i + 1
             return None
         except Exception as e:
-            print(f"Error finding today's row: {e}")
-            return None
+            logger.error(f"Error finding date row: {e}")
+            raise SheetError(f"Failed to find row for date {date_str}: {str(e)}")
 
-    def get_row_values(self, row_index):
+    @retry.Retry()
+    def get_row_values(self, row_index: int) -> List[float]:
+        """Get all values for a specific row"""
         range_name = f"{self.sheet_name}!{row_index}:{row_index}"
-        result = (
-            self.service.spreadsheets()
-            .values()
-            .get(spreadsheetId=self.spreadsheet_id, range=range_name)
-            .execute()
-        )
-        return result.get("values", [[]])[0] if "values" in result else []
-
-    def update_row(self, row_index, values):
-        range_name = (
-            f"{self.sheet_name}!A{row_index}:{chr(65 + len(values))}{row_index}"
-        )
-        body = {"values": [values]}
-        self.service.spreadsheets().values().update(
-            spreadsheetId=self.spreadsheet_id,
-            range=range_name,
-            valueInputOption="USER_ENTERED",
-            body=body,
-        ).execute()
-
-    def process_new_entry(self, date, activity, duration):
-        # first add a column for the new activity if needed
-        self.update_activities_header(activity)
-        date_row_index = self.get_date_row_index(date)
-        current_values = self.get_row_values(date_row_index)
-        activities = self.get_activity_columns()
-        activity_index = activities.index(activity) + 1  # sheets are 1-indexed
-
-        if len(current_values) > activity_index:
-            current_duration = float(current_values[activity_index] or 0)
-            current_values[activity_index] = current_duration + duration
-
-        else:
-            while len(current_values) <= activity_index:
-                current_values.append(0)
-            current_values[activity_index] = duration
-        self.update_row(date_row_index, current_values)
-
-    def get_activity_columns(self):
-        """Get list of activity names from the header row"""
-        range_name = f"{self.sheet_name}!A1:Z1"
-
         try:
             result = (
                 self.service.spreadsheets()
@@ -265,32 +182,121 @@ class ActivityTracker:
                 .get(spreadsheetId=self.spreadsheet_id, range=range_name)
                 .execute()
             )
+            return result.get("values", [[]])[0] if "values" in result else []
+        except Exception as e:
+            logger.error(f"Error reading row values: {e}")
+            raise SheetError(f"Failed to read row {row_index}: {str(e)}")
+
+    @retry.Retry()
+    def update_row(self, row_index: int, values: List[float]) -> None:
+        """Update an entire row with new values"""
+        range_name = f"{self.sheet_name}!A{row_index}:{chr(65 + len(values))}{row_index}"
+        try:
+            self.service.spreadsheets().values().update(
+                spreadsheetId=self.spreadsheet_id,
+                range=range_name,
+                valueInputOption="USER_ENTERED",
+                body={"values": [values]}
+            ).execute()
+        except Exception as e:
+            logger.error(f"Error updating row: {e}")
+            raise SheetError(f"Failed to update row {row_index}: {str(e)}")
+
+    def process_new_entry(self, date: datetime, activity: str, duration: float) -> None:
+        """Process a new activity entry with validation"""
+        if duration < 0:
+            raise ValueError("Duration cannot be negative")
+            
+        logger.info(f"Processing new entry: {activity} for {date.date()} - {duration} hours")
+        
+        self.update_activities_header(activity)
+        date_row_index = self.get_date_row_index(date)
+        
+        if not date_row_index:
+            raise ValueError(f"Could not find row for date: {date}")
+            
+        self._update_activity_duration(date_row_index, activity, duration)
+
+    def _update_activity_duration(self, row_index: int, activity: str, duration: float) -> None:
+        """Update the duration for a specific activity"""
+        current_values = self.get_row_values(row_index)
+        activities = self.get_activity_columns()
+        activity_index = activities.index(activity) + 1
+        
+        current_values = self._ensure_row_length(current_values, activity_index)
+        current_duration = float(current_values[activity_index] or 0)
+        current_values[activity_index] = current_duration + duration
+        
+        self.update_row(row_index, current_values)
+
+    @staticmethod
+    def _ensure_row_length(values: List[float], required_length: int) -> List[float]:
+        """Ensure the row has the required length, padding with zeros if needed"""
+        return values + [0] * (required_length + 1 - len(values))
+
+    @retry.Retry()
+    def update_header_row(self, activities: Optional[List[str]] = None) -> None:
+        """Update the header row with given activities"""
+        activities = activities or []
+        header_row = ["Date"] + activities
+        range_name = f"{self.sheet_name}!A1:{chr(65 + len(header_row))}{1}"
+
+        try:
+            self.service.spreadsheets().values().update(
+                spreadsheetId=self.spreadsheet_id,
+                range=range_name,
+                valueInputOption="USER_ENTERED",
+                body={"values": [header_row]}
+            ).execute()
+        except Exception as e:
+            logger.error(f"Error updating header row: {e}")
+            raise SheetError(f"Failed to update header row: {str(e)}")
+
+    def update_activities_header(self, activity: str) -> None:
+        """Add a new activity column if it doesn't exist"""
+        existing_activities = self.get_activity_columns()
+        if activity not in existing_activities:
+            logger.info(f"Adding new activity column: {activity}")
+            activities = existing_activities + [activity]
+            self.update_header_row(activities)
+
+    @retry.Retry()
+    def get_activity_columns(self) -> List[str]:
+        """Get list of activity names from the header row"""
+        range_name = f"{self.sheet_name}!A1:Z1"
+
+        try:
+            result = self.service.spreadsheets().values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range=range_name
+            ).execute()
 
             if "values" in result and result["values"]:
                 headers = result["values"][0]
                 return headers[1:] if len(headers) > 1 else []
-            else:
-                return []
-
-        except Exception as e:
-            print(f"Error reading headers: {e}")
             return []
 
+        except Exception as e:
+            logger.error(f"Error reading headers: {e}")
+            raise SheetError(f"Failed to read activity columns: {str(e)}")
 
 if __name__ == "__main__":
     import os
-
     from dotenv import load_dotenv
-
+    
     load_dotenv()
-
+    
     SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
     SHEET_NAME = os.getenv("SHEET_NAME")
     CREDENTIALS_PATH = os.getenv("CREDENTIALS_PATH")
-
+    
     if not all([SPREADSHEET_ID, SHEET_NAME, CREDENTIALS_PATH]):
         raise EnvironmentError("Missing required environment variables")
-
+    
     tracker = ActivityTracker(CREDENTIALS_PATH, SPREADSHEET_ID, SHEET_NAME)
     tracker.initialize_year_structure()
-    tracker.process_new_entry(datetime.now().date(), "Reading", 1)
+    tracker.process_new_entry(
+        date=datetime.now() + timedelta(days=2),
+        activity="Reading",
+        duration=1.5
+    )
