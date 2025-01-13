@@ -1,25 +1,97 @@
+import logging
 from datetime import datetime, timedelta
-
+from dataclasses import dataclass
+from enum import Enum
+from google.oauth2 import service_account
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
-from google.oauth2 import service_account
+from typing import List, Optional, Tuple, Generator
+from google.api_core import retry
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class SheetError(Exception):
+    """Custom exception for sheet-related errors"""
+    pass
+
+@dataclass
+class SheetEntry:
+    """Represents a single row entry in the activity sheet"""
+    date: datetime
+    values: List[float]
+
+class EntryType(Enum):
+    """Types of entries that can appear in the date column"""
+    WEEK_HEADER = "WEEK"
+    DATE = "DATE"
 
 class ActivityTracker:
-    def __init__(self, credentials_path, spreadsheet_id, sheet_name):
-        self.SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+    SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+    BATCH_SIZE = 50
+
+    def __init__(self, credentials_path: str, spreadsheet_id: str, sheet_name: str):
+        """Initialize the ActivityTracker with required credentials and sheet info"""
         self.spreadsheet_id = spreadsheet_id
         self.sheet_name = sheet_name
         self.credentials_path = credentials_path
-        self.service = self.build_sheets_service()
+        self.service = self._build_sheets_service()
 
-    def build_sheets_service(self):
-        """Create an return an authorized Sheets API service object"""
-        creds = service_account.Credentials.from_service_account_file(
-            self.credentials_path, scopes=self.SCOPES
-        )
-        return build("sheets", "v4", credentials=creds)
+    def _build_sheets_service(self):
+        """Create and return an authorized Sheets API service object"""
+        try:
+            creds = service_account.Credentials.from_service_account_file(
+                self.credentials_path, scopes=self.SCOPES
+            )
+            return build("sheets", "v4", credentials=creds)
+        except Exception as e:
+            logger.error(f"Failed to build sheets service: {e}")
+            raise SheetError(f"Could not initialize sheets service: {str(e)}")
 
+    def _generate_dates(self, year: int) -> Generator[Tuple[EntryType, str], None, None]:
+        """Generate sequence of dates and week headers for the year"""
+        current_date = datetime(year, 1, 1)
+        current_week = None
+        
+        while current_date.year == year:
+            week_number = current_date.isocalendar()[1]
+            
+            if week_number != current_week:
+                yield EntryType.WEEK_HEADER, f"Week {week_number}"
+                current_week = week_number
+            
+            yield EntryType.DATE, current_date.strftime("%A, %B %-d")
+            current_date += timedelta(days=1)
+
+    @retry.Retry()
+    def get_current_dates(self) -> List[str]:
+        """Get the current content of column A with retry logic"""
+        range_name = f"{self.sheet_name}!A:A"
+        try:
+            result = (
+                self.service.spreadsheets()
+                .values()
+                .get(spreadsheetId=self.spreadsheet_id, range=range_name)
+                .execute()
+            )
+            return [row[0] for row in result.get("values", [])[1:] if row]
+        except Exception as e:
+            logger.error(f"Error reading current dates: {e}")
+            raise SheetError(f"Failed to read current dates: {str(e)}")
+    
+    @retry.Retry()
+    def clear_sheet(self) -> None:
+        """Clear all content from sheet with retry logic"""
+        clear_range = f"{self.sheet_name}!A1:Z1000"
+        try:
+            self.service.spreadsheets().values().batchClear(
+                spreadsheetId=self.spreadsheet_id,
+                body={"ranges": [clear_range]}
+            ).execute()
+        except Exception as e:
+            logger.error(f"Error clearing sheet: {e}")
+            raise SheetError(f"Failed to clear sheet: {str(e)}")
+        
     def get_expected_dates(self, year):
         """Generate the expected sequence of dates and week headers"""
         expected = []
@@ -42,38 +114,6 @@ class ActivityTracker:
             current_date += timedelta(days=1)
 
         return expected, rows_batch
-
-    def get_current_dates(self):
-        """Get the current content of column A"""
-        range_name = f"{self.sheet_name}!A:A"
-        try:
-            result = (
-                self.service.spreadsheets()
-                .values()
-                .get(spreadsheetId=self.spreadsheet_id, range=range_name)
-                .execute()
-            )
-
-            if "values" in result:
-                # Flatten the 2D array and skip the header row
-                return [row[0] for row in result["values"][1:] if row]
-            return []
-
-        except Exception as e:
-            print(f"Error reading current dates: {e}")
-            return []
-
-    def clear_sheet(self):
-        """Clear all content from sheet"""
-        clear_range = f"{self.sheet_name}!A1:Z1000"
-        body = {"ranges": [clear_range]}
-        try:
-            self.service.spreadsheets().values().batchClear(
-                spreadsheetId=self.spreadsheet_id, body=body
-            ).execute()
-        except Exception as e:
-            print(f"Error clearing sheet: {e}")
-            raise
 
     def initialize_year_structure(self, year=None, force=False):
         """Initialize the spreadsheet with all weeks and days of the year."""
@@ -239,6 +279,7 @@ class ActivityTracker:
 
 if __name__ == "__main__":
     import os
+
     from dotenv import load_dotenv
 
     load_dotenv()
@@ -252,3 +293,4 @@ if __name__ == "__main__":
 
     tracker = ActivityTracker(CREDENTIALS_PATH, SPREADSHEET_ID, SHEET_NAME)
     tracker.initialize_year_structure()
+    tracker.process_new_entry(datetime.now().date(), "Reading", 1)
