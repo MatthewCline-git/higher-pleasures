@@ -1,3 +1,4 @@
 secrets/
 venv/
 .env
+../higher-pleasures-secrets/
