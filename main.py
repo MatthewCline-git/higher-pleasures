@@ -37,32 +37,31 @@ def main():
     # Load configuration
     config = load_config()
 
-    user_sheets = {
+    user_sheet_mapping = {
         int(config["FRIEND_TELEGRAM_ID"]): config["FRIEND_SHEET_NAME"],
         int(config["MY_TELEGRAM_ID"]): config["MY_SHEET_NAME"],
     }
 
-    trackers = {}
-    for user_id, sheet_name in user_sheets.items():
-        # Initialize components
-        sheets_client = GoogleSheetsClient(
-            spreadsheet_id=config["SPREADSHEET_ID"],
-            sheet_name=sheet_name,
-            credentials_path=config["CREDENTIALS_PATH"],
-        )
+    # Initialize components
+    sheets_client = GoogleSheetsClient(
+        spreadsheet_id=config["SPREADSHEET_ID"],
+        credentials_path=config["CREDENTIALS_PATH"],
+    )
 
-        sheets_client.initialize_year_structure()
+    activity_parser = OpenAIActivityParser(
+        api_key=config["OPENAI_API_KEY"], confidence_threshold=0.7
+    )
 
-        activity_parser = OpenAIActivityParser(
-            api_key=config["OPENAI_API_KEY"], confidence_threshold=0.7
-        )
-
-        trackers[user_id] = ActivityTracker(sheets_client, activity_parser)
+    tracker = ActivityTracker(
+        sheets_client=sheets_client,
+        activity_parser=activity_parser,
+        user_sheet_mapping=user_sheet_mapping,
+    )
 
     telegram_handler = TelegramHandler(
         token=config["TELEGRAM_BOT_API_KEY"],
-        activity_trackers=trackers,
-        allowed_user_ids=list(user_sheets.keys())
+        activity_trackers=tracker,
+        allowed_user_ids=list(user_sheet_mapping.keys())
     )
 
     print("🤖 Starting Telegram bot...")

@@ -15,38 +15,46 @@ class ActivityTracker:
         self,
         sheets_client: GoogleSheetsClient,
         activity_parser: OpenAIActivityParser,
+        user_sheet_mapping: dict[int, str],
         year: Optional[int] = None,
     ):
         self.sheets_client = sheets_client
         self.activity_parser = activity_parser
         self.year = year or datetime.now().year
+        self.user_sheet_mapping = user_sheet_mapping
+        for sheet_name in set(user_sheet_mapping.values()):
+            self.sheets_client.initialize_year_structure(sheet_name, self.year)
 
-    def track_activity(self, message: str, date: Optional[datetime] = None) -> None:
+    def track_activity(self, user_id: int, message: str, date: Optional[datetime] = None) -> None:
         """Track a new activity from a natural language message"""
+        sheet_name = self.user_sheet_mapping.get(user_id)
+        if not sheet_name:
+            raise ValueError(f"No sheet mapping found for {user_id=}")
+        
         existing_categories = self.sheets_client.get_activity_columns()
         parsed = self.activity_parser.parse_message(message, existing_categories)
 
         date = date or datetime.now()
         self.process_new_entry(
-            date=date, activity=parsed["activity"], duration=parsed["duration"]
+            sheet_name=sheet_name, date=date, activity=parsed["activity"], duration=parsed["duration"]
         )
 
-    def process_new_entry(self, date: datetime, activity: str, duration: float) -> None:
+    def process_new_entry(self, sheet_name: str, date: datetime, activity: str, duration: float) -> None:
         """Process a new activity entry with validation"""
         if duration < 0:
             raise ValueError("Duration cannot be negative")
 
         logger.info(
-            f"Processing new entry: {activity} for {date.date()} - {duration} hours"
+            f"Processing new entry for {sheet_name}: {activity} for {date.date()} - {duration} hours"
         )
 
-        self.sheets_client.update_activities_header(activity)
-        date_row_index = self.sheets_client.get_date_row_index(date)
+        self.sheets_client.update_activities_header(sheet_name, activity)
+        date_row_index = self.sheets_client.get_date_row_index(sheet_name, date)
 
         if not date_row_index:
             raise ValueError(f"Could not find row for date: {date}")
 
-        self._update_activity_duration(date_row_index, activity, duration)
+        self._update_activity_duration(sheet_name, date_row_index, activity, duration)
 
     def _update_activity_duration(
         self, row_index: int, activity: str, duration: float

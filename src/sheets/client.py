@@ -26,11 +26,9 @@ class GoogleSheetsClient:
     def __init__(
         self,
         spreadsheet_id: str,
-        sheet_name: str,
         credentials_path: str,
     ):
         self.spreadsheet_id = spreadsheet_id
-        self.sheet_name = sheet_name
         self.credentials_path = credentials_path
         self.service = self._build_sheets_service()
 
@@ -46,7 +44,7 @@ class GoogleSheetsClient:
             raise SheetError(f"Could not initialize sheets service: {str(e)}")
 
     def initialize_year_structure(
-        self, year: Optional[int] = None, force: bool = False
+        self, sheet_name:str, year: Optional[int] = None, force: bool = False
     ) -> None:
         """Initialize the spreadsheet with all weeks and days of the year."""
         year = year or datetime.now().year
@@ -81,9 +79,9 @@ class GoogleSheetsClient:
             current_date += timedelta(days=1)
 
     @retry.Retry()
-    def get_current_dates(self) -> List[str]:
+    def get_current_dates(self, sheet_name: str) -> List[str]:
         """Get the current content of column A with retry logic"""
-        range_name = f"{self.sheet_name}!A:A"
+        range_name = f"{sheet_name}!A:A"
         try:
             result = (
                 self.service.spreadsheets()
@@ -97,9 +95,9 @@ class GoogleSheetsClient:
             raise SheetError(f"Failed to read current dates: {str(e)}")
 
     @retry.Retry()
-    def clear_sheet(self) -> None:
+    def clear_sheet(self, sheet_name) -> None:
         """Clear all content from sheet with retry logic"""
-        clear_range = f"{self.sheet_name}!A1:Z1000"
+        clear_range = f"{sheet_name}!A1:Z1000"
         try:
             self.service.spreadsheets().values().batchClear(
                 spreadsheetId=self.spreadsheet_id, body={"ranges": [clear_range]}
@@ -154,12 +152,12 @@ class GoogleSheetsClient:
         logger.info("Sheet initialization completed successfully")
 
     @retry.Retry()
-    def append_to_sheet_formatted(self, values: List[List[str]]) -> None:
+    def append_to_sheet_formatted(self, sheet_name: str, values: List[List[str]]) -> None:
         """Append rows to the sheet with retry logic"""
         try:
             self.service.spreadsheets().values().append(
                 spreadsheetId=self.spreadsheet_id,
-                range=f"{self.sheet_name}!A1",
+                range=f"{sheet_name}!A1",
                 valueInputOption="RAW",
                 insertDataOption="INSERT_ROWS",
                 body={"values": values},
@@ -169,10 +167,10 @@ class GoogleSheetsClient:
             raise SheetError(f"Failed to append to sheet: {str(e)}")
 
     @retry.Retry()
-    def get_date_row_index(self, date: datetime) -> Optional[int]:
+    def get_date_row_index(self, sheet_name: str, date: datetime) -> Optional[int]:
         """Find the row index for a given date"""
         date_str = date.strftime("%A, %B %d")
-        range_name = f"{self.sheet_name}!A:A"
+        range_name = f"{sheet_name}!A:A"
         try:
             result = (
                 self.service.spreadsheets()
@@ -191,9 +189,9 @@ class GoogleSheetsClient:
             raise SheetError(f"Failed to find row for date {date_str}: {str(e)}")
 
     @retry.Retry()
-    def get_row_values(self, row_index: int) -> List[float]:
+    def get_row_values(self, sheet_name: str, row_index: int) -> List[float]:
         """Get all values for a specific row"""
-        range_name = f"{self.sheet_name}!{row_index}:{row_index}"
+        range_name = f"{sheet_name}!{row_index}:{row_index}"
         try:
             result = (
                 self.service.spreadsheets()
@@ -207,10 +205,10 @@ class GoogleSheetsClient:
             raise SheetError(f"Failed to read row {row_index}: {str(e)}")
 
     @retry.Retry()
-    def update_row(self, row_index: int, values: List[float]) -> None:
+    def update_row(self, sheet_name: str, row_index: int, values: List[float]) -> None:
         """Update an entire row with new values"""
         range_name = (
-            f"{self.sheet_name}!A{row_index}:{chr(65 + len(values))}{row_index}"
+            f"{sheet_name}!A{row_index}:{chr(65 + len(values))}{row_index}"
         )
         try:
             self.service.spreadsheets().values().update(
@@ -260,11 +258,11 @@ class GoogleSheetsClient:
         return values + [0] * (required_length + 1 - len(values))
 
     @retry.Retry()
-    def update_header_row(self, activities: Optional[List[str]] = None) -> None:
+    def update_header_row(self, sheet_name: str, activities: Optional[List[str]] = None) -> None:
         """Update the header row with given activities"""
         activities = activities or []
         header_row = ["Date"] + activities
-        range_name = f"{self.sheet_name}!A1:{chr(65 + len(header_row))}{1}"
+        range_name = f"{sheet_name}!A1:{chr(65 + len(header_row))}{1}"
 
         try:
             self.service.spreadsheets().values().update(
@@ -286,9 +284,9 @@ class GoogleSheetsClient:
             self.update_header_row(activities)
 
     @retry.Retry()
-    def get_activity_columns(self) -> List[str]:
+    def get_activity_columns(self, sheet_name: str) -> List[str]:
         """Get list of activity names from the header row"""
-        range_name = f"{self.sheet_name}!A1:Z1"
+        range_name = f"{sheet_name}!A1:Z1"
 
         try:
             result = (
