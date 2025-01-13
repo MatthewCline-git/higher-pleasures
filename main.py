@@ -6,6 +6,7 @@ from dotenv import load_dotenv
 from src.activities.parser import OpenAIActivityParser
 from src.activities.tracker import ActivityTracker
 from src.sheets.client import GoogleSheetsClient
+from src.messaging.telegram_handler import TelegramHandler
 
 
 def load_config():
@@ -17,6 +18,7 @@ def load_config():
         "SHEET_NAME": os.getenv("SHEET_NAME"),
         "CREDENTIALS_PATH": os.getenv("CREDENTIALS_PATH"),
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
+        "TELEGRAM_BOT_API_KEY": os.getenv("TELEGRAM_BOT_API_KEY"),
     }
 
     missing = [k for k, v in required_vars.items() if not v]
@@ -48,8 +50,13 @@ def main():
     # Initialize tracker
     tracker = ActivityTracker(sheets_client, activity_parser)
 
-    # Example usage
-    tracker.track_activity("Cranked out the last chapter of the Sound and the Fury")
+    telegram_handler = TelegramHandler(
+        token=config["TELEGRAM_BOT_API_KEY"],
+        activity_tracker=tracker,
+    )
+
+    print("🤖 Starting Telegram bot...")
+    telegram_handler.start_polling()
 
 
 if __name__ == "__main__":
