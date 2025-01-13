@@ -51,7 +51,7 @@ class GoogleSheetsClient:
         logger.info(f"Initializing year structure for {year}")
 
         if not force:
-            current_dates = self.get_current_dates()
+            current_dates = self.get_current_dates(sheet_name=sheet_name)
             date_gen = self._generate_dates(year)
             expected_dates = [date_str for _, date_str in date_gen]
 
@@ -59,7 +59,7 @@ class GoogleSheetsClient:
                 logger.info("Sheet is already properly initialized")
                 return
 
-        self._perform_initialization(year)
+        self._perform_initialization(sheet_name, year)
 
     def _generate_dates(
         self, year: int
@@ -106,24 +106,6 @@ class GoogleSheetsClient:
             logger.error(f"Error clearing sheet: {e}")
             raise SheetError(f"Failed to clear sheet: {str(e)}")
 
-    def initialize_year_structure(
-        self, year: Optional[int] = None, force: bool = False
-    ) -> None:
-        """Initialize the spreadsheet with all weeks and days of the year."""
-        year = year or datetime.now().year
-        logger.info(f"Initializing year structure for {year}")
-
-        if not force:
-            current_dates = self.get_current_dates()
-            date_gen = self._generate_dates(year)
-            expected_dates = [date_str for _, date_str in date_gen]
-
-            if self._validate_current_structure(current_dates, expected_dates):
-                logger.info("Sheet is already properly initialized")
-                return
-
-        self._perform_initialization(year)
-
     def _validate_current_structure(
         self, current: List[str], expected: List[str]
     ) -> bool:
@@ -132,11 +114,11 @@ class GoogleSheetsClient:
             curr == exp for curr, exp in zip(current, expected)
         )
 
-    def _perform_initialization(self, year: int) -> None:
+    def _perform_initialization(self, sheet_name: str, year: int) -> None:
         """Perform the actual initialization of the sheet"""
         logger.info("Starting sheet initialization")
-        self.clear_sheet()
-        self.update_header_row()
+        self.clear_sheet(sheet_name=sheet_name)
+        self.update_header_row(sheet_name=sheet_name)
 
         batch = []
         for entry_type, value in self._generate_dates(year):
@@ -275,9 +257,9 @@ class GoogleSheetsClient:
             logger.error(f"Error updating header row: {e}")
             raise SheetError(f"Failed to update header row: {str(e)}")
 
-    def update_activities_header(self, activity: str) -> None:
+    def update_activities_header(self, sheet_name, activity: str) -> None:
         """Add a new activity column if it doesn't exist"""
-        existing_activities = self.get_activity_columns()
+        existing_activities = self.get_activity_columns(sheet_name=sheet_name)
         if activity not in existing_activities:
             logger.info(f"Adding new activity column: {activity}")
             activities = existing_activities + [activity]

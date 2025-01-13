@@ -15,7 +15,7 @@ class TelegramHandler:
     def __init__(
         self, 
         token: str,
-        activity_trackers: dict[int, ActivityTracker],
+        activity_tracker: ActivityTracker,
         allowed_user_ids: Optional[list[int]] = None
     ):
         """
@@ -27,7 +27,7 @@ class TelegramHandler:
             allowed_user_ids: List of Telegram user IDs that can use the bot
         """
         self.token = token
-        self.activity_trackers = activity_trackers
+        self.activity_tracker = activity_tracker
         self.allowed_user_ids = allowed_user_ids or []
         self.application = Application.builder().token(token).build()
 
@@ -80,14 +80,13 @@ class TelegramHandler:
             return
 
         user_id = update.effective_user.id
-        if user_id not in self.activity_trackers:
+        if user_id not in self.allowed_user_ids:
             await update.message.reply_text("❌ You don't have a configured habit tracker.")
             return
         
         message_text = update.message.text
         try:
-            tracker = self.activity_trackers[user_id]
-            tracker.track_activity(message_text)
+            self.activity_tracker.track_activity(user_id=user_id, message=message_text)
             await update.message.reply_text("✅ Activity tracked!")
             
         except Exception as e:

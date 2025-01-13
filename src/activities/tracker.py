@@ -31,7 +31,7 @@ class ActivityTracker:
         if not sheet_name:
             raise ValueError(f"No sheet mapping found for {user_id=}")
         
-        existing_categories = self.sheets_client.get_activity_columns()
+        existing_categories = self.sheets_client.get_activity_columns(sheet_name)
         parsed = self.activity_parser.parse_message(message, existing_categories)
 
         date = date or datetime.now()

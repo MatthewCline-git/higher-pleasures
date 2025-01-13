@@ -60,7 +60,7 @@ def main():
 
     telegram_handler = TelegramHandler(
         token=config["TELEGRAM_BOT_API_KEY"],
-        activity_trackers=tracker,
+        activity_tracker=tracker,
         allowed_user_ids=list(user_sheet_mapping.keys())
     )
 
