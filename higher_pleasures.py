@@ -26,23 +26,23 @@ class ActivityTracker:
         rows_batch = []  # Store the actual rows we'll need for initialization
         current_date = datetime(year, 1, 1)
         current_week = None
-        
+
         while current_date.year == year:
             week_number = current_date.isocalendar()[1]
-            
+
             if week_number != current_week:
                 week_header = f"Week {week_number}"
                 expected.append(week_header)
                 rows_batch.append([week_header])
                 current_week = week_number
-            
+
             date_str = f"{current_date.strftime('%A, %B %-d')}"
             expected.append(date_str)
             rows_batch.append([date_str])
             current_date += timedelta(days=1)
-            
+
         return expected, rows_batch
-    
+
     def get_current_dates(self):
         """Get the current content of column A"""
         range_name = f"{self.sheet_name}!A:A"
@@ -53,26 +53,23 @@ class ActivityTracker:
                 .get(spreadsheetId=self.spreadsheet_id, range=range_name)
                 .execute()
             )
-            
+
             if "values" in result:
                 # Flatten the 2D array and skip the header row
                 return [row[0] for row in result["values"][1:] if row]
             return []
-            
+
         except Exception as e:
             print(f"Error reading current dates: {e}")
             return []
-        
+
     def clear_sheet(self):
         """Clear all content from sheet"""
         clear_range = f"{self.sheet_name}!A1:Z1000"
-        body = {
-            "ranges": [clear_range]
-        }
+        body = {"ranges": [clear_range]}
         try:
             self.service.spreadsheets().values().batchClear(
-                spreadsheetId=self.spreadsheet_id,
-                body=body
+                spreadsheetId=self.spreadsheet_id, body=body
             ).execute()
         except Exception as e:
             print(f"Error clearing sheet: {e}")
@@ -82,31 +79,36 @@ class ActivityTracker:
         """Initialize the spreadsheet with all weeks and days of the year."""
         if year is None:
             year = datetime.now().year
-        
+
         expected_dates, rows_to_write = self.get_expected_dates(year)
 
         if not force:
             current_dates = self.get_current_dates()
             if len(current_dates) == len(expected_dates):
-                if all(current == expected for current, expected in zip(current_dates, expected_dates)):
+                if all(
+                    current == expected
+                    for current, expected in zip(current_dates, expected_dates)
+                ):
                     print("Sheet is already properly initialized.")
                     return
                 else:
                     print("Content mismatch found.")
             else:
-                print(f"Length mismatch: current={len(current_dates)}, expected={len(expected_dates)}")
+                print(
+                    f"Length mismatch: current={len(current_dates)}, expected={len(expected_dates)}"
+                )
 
         print("Initializing sheet...")
-        
+
         # Clear and initialize
         self.clear_sheet()
         self.update_header_row()
-        
+
         # Write rows in batches of 50
         for i in range(0, len(rows_to_write), 50):
-            batch = rows_to_write[i:i + 50]
+            batch = rows_to_write[i : i + 50]
             self.append_to_sheet_formatted(batch)
-            
+
         print("Initialization complete.")
 
     def append_to_sheet_formatted(self, values):
@@ -119,7 +121,7 @@ class ActivityTracker:
                 range=f"{self.sheet_name}!A1",
                 valueInputOption="RAW",
                 insertDataOption="INSERT_ROWS",
-                body={'values': values}
+                body={"values": values},
             )
             .execute()
         )
@@ -145,7 +147,7 @@ class ActivityTracker:
         except Exception as e:
             print(f"Error updating header row: {e}")
             raise
-        
+
     def update_activities_header(self, activity):
         existing_activities = self.get_activity_columns()
         if activity not in existing_activities:
@@ -171,7 +173,7 @@ class ActivityTracker:
         except Exception as e:
             print(f"Error finding today's row: {e}")
             return None
-    
+
     def get_row_values(self, row_index):
         range_name = f"{self.sheet_name}!{row_index}:{row_index}"
         result = (
@@ -181,7 +183,7 @@ class ActivityTracker:
             .execute()
         )
         return result.get("values", [[]])[0] if "values" in result else []
-    
+
     def update_row(self, row_index, values):
         range_name = (
             f"{self.sheet_name}!A{row_index}:{chr(65 + len(values))}{row_index}"
@@ -200,7 +202,7 @@ class ActivityTracker:
         date_row_index = self.get_date_row_index(date)
         current_values = self.get_row_values(date_row_index)
         activities = self.get_activity_columns()
-        activity_index = activities.index(activity) + 1 # sheets are 1-indexed
+        activity_index = activities.index(activity) + 1  # sheets are 1-indexed
 
         if len(current_values) > activity_index:
             current_duration = float(current_values[activity_index] or 0)
@@ -233,6 +235,7 @@ class ActivityTracker:
         except Exception as e:
             print(f"Error reading headers: {e}")
             return []
+
 
 if __name__ == "__main__":
     SPREADSHEET_ID = "1-Diy__NG89KaYEFdPdpTP3msn0Sl63TX_vqPX2nAu44"
