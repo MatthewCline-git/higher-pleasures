@@ -57,18 +57,18 @@ class ActivityTracker:
         self._update_activity_duration(sheet_name, date_row_index, activity, duration)
 
     def _update_activity_duration(
-        self, row_index: int, activity: str, duration: float
+        self, sheet_name: str, row_index: int, activity: str, duration: float
     ) -> None:
         """Update the duration for a specific activity"""
-        current_values = self.sheets_client.get_row_values(row_index)
-        activities = self.sheets_client.get_activity_columns()
+        current_values = self.sheets_client.get_row_values(sheet_name=sheet_name, row_index=row_index)
+        activities = self.sheets_client.get_activity_columns(sheet_name=sheet_name)
         activity_index = activities.index(activity) + 1
 
         current_values = self._ensure_row_length(current_values, activity_index)
         current_duration = float(current_values[activity_index] or 0)
         current_values[activity_index] = current_duration + duration
 
-        self.sheets_client.update_row(row_index, current_values)
+        self.sheets_client.update_row(sheet_name=sheet_name, row_index=row_index, values=current_values)
 
     @staticmethod
     def _ensure_row_length(values: list[float], required_length: int) -> list[float]:

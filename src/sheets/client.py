@@ -263,7 +263,7 @@ class GoogleSheetsClient:
         if activity not in existing_activities:
             logger.info(f"Adding new activity column: {activity}")
             activities = existing_activities + [activity]
-            self.update_header_row(activities)
+            self.update_header_row(sheet_name=sheet_name, activities=activities)
 
     @retry.Retry()
     def get_activity_columns(self, sheet_name: str) -> List[str]:
