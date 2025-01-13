@@ -1,12 +1,11 @@
 # src/main.py
 import os
-from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 
-from .activities.parser import OpenAIActivityParser
-from .activities.tracker import ActivityTracker
-from .sheets.client import GoogleSheetsClient
+from src.activities.parser import OpenAIActivityParser
+from src.activities.tracker import ActivityTracker
+from src.sheets.client import GoogleSheetsClient
 
 
 def load_config():
@@ -40,6 +39,8 @@ def main():
         credentials_path=config["CREDENTIALS_PATH"],
     )
 
+    sheets_client.initialize_year_structure()
+
     activity_parser = OpenAIActivityParser(
         api_key=config["OPENAI_API_KEY"], confidence_threshold=0.7
     )
@@ -47,11 +48,8 @@ def main():
     # Initialize tracker
     tracker = ActivityTracker(sheets_client, activity_parser)
 
-    # Initialize sheet structure if needed
-    tracker.initialize_year_structure()
-
     # Example usage
-    tracker.track_activity("Did laps in the pool from 10am to noon")
+    tracker.track_activity("Cranked out the last chapter of the Sound and the Fury")
 
 
 if __name__ == "__main__":

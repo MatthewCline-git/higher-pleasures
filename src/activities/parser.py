@@ -1,15 +1,13 @@
 import json
-from typing import Dict, Protocol
 
 from openai import OpenAI
 
+# class ActivityParser(Protocol):
+#     """Protocol defining the interface for activity parsers"""
 
-class ActivityParser(Protocol):
-    """Protocol defining the interface for activity parsers"""
-
-    def parse_message(self, message: str) -> Dict[str, float]:
-        """Parse a message into activity and duration"""
-        pass
+#     def parse_message(self, message: str) -> Dict[str, float]:
+#         """Parse a message into activity and duration"""
+#         pass
 
 
 class OpenAIActivityParser:
@@ -17,9 +15,9 @@ class OpenAIActivityParser:
         self.client = OpenAI(api_key=api_key)
         self.confidence_threshold = confidence_threshold
 
-    def _generate_system_prompt(self) -> str:
+    def _generate_system_prompt(self, existing_activities) -> str:
         return f"""Extract activity and duration from the message. 
-Existing activity categories are: {", ".join(self.get_activity_columns())}
+Existing activity categories are: {", ".join(existing_activities)}
 
 If the described activity closely matches an existing category, use that category.
 Always convert duration to hours (e.g., 30 minutes = 0.5 hours). If there is no concrete duration number in the input, estimate.
@@ -79,12 +77,15 @@ Return JSON with:
 - confidence: How confident (0-1) this matches an existing category
 - matched_category: The existing category it matches, if any"""
 
-    def parse_message(self, message: str) -> dict:
+    def parse_message(self, message: str, existing_activities) -> dict:
         """Parse a natural language message into activity and duration"""
         response = self.client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": self._generate_system_prompt()},
+                {
+                    "role": "system",
+                    "content": self._generate_system_prompt(existing_activities),
+                },
                 {"role": "user", "content": message},
             ],
             response_format={"type": "json_object"},

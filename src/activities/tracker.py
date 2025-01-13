@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 from ..sheets.client import GoogleSheetsClient
-from .parser import ActivityParser
+from .parser import OpenAIActivityParser
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ class ActivityTracker:
     def __init__(
         self,
         sheets_client: GoogleSheetsClient,
-        activity_parser: ActivityParser,
+        activity_parser: OpenAIActivityParser,
         year: Optional[int] = None,
     ):
         self.sheets_client = sheets_client

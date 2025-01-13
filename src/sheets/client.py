@@ -6,7 +6,7 @@ from google.api_core import retry
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
 
-from .models import EntryType, SheetEntry
+from .models import EntryType
 
 logger = logging.getLogger(__name__)
 
