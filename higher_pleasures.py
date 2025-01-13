@@ -238,12 +238,17 @@ class ActivityTracker:
 
 
 if __name__ == "__main__":
-    SPREADSHEET_ID = "1-Diy__NG89KaYEFdPdpTP3msn0Sl63TX_vqPX2nAu44"
-    SHEET_NAME = "Sheet2"
-    CREDENTIALS_PATH = "./secrets/higher_pleasures_keys.json"
+    import os
+    from dotenv import load_dotenv
+
+    load_dotenv()
+
+    SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
+    SHEET_NAME = os.getenv("SHEET_NAME")
+    CREDENTIALS_PATH = os.getenv("CREDENTIALS_PATH")
+
+    if not all([SPREADSHEET_ID, SHEET_NAME, CREDENTIALS_PATH]):
+        raise EnvironmentError("Missing required environment variables")
 
     tracker = ActivityTracker(CREDENTIALS_PATH, SPREADSHEET_ID, SHEET_NAME)
     tracker.initialize_year_structure()
-    tracker.process_new_entry(
-        date=datetime.now() + timedelta(days=2), activity="Reading", duration=1.5
-    )
