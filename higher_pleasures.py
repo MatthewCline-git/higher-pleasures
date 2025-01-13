@@ -12,25 +12,32 @@ from google.api_core import retry
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class SheetError(Exception):
     """Custom exception for sheet-related errors"""
+
     pass
+
 
 @dataclass
 class SheetEntry:
     """Represents a single row entry in the activity sheet"""
+
     date: datetime
     values: List[float]
 
+
 class EntryType(Enum):
     """Types of entries that can appear in the date column"""
+
     WEEK_HEADER = "WEEK"
     DATE = "DATE"
+
 
 class ActivityTracker:
     SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
     BATCH_SIZE = 50
-    
+
     def __init__(self, credentials_path: str, spreadsheet_id: str, sheet_name: str):
         """Initialize the ActivityTracker with required credentials and sheet info"""
         self.spreadsheet_id = spreadsheet_id
@@ -49,18 +56,20 @@ class ActivityTracker:
             logger.error(f"Failed to build sheets service: {e}")
             raise SheetError(f"Could not initialize sheets service: {str(e)}")
 
-    def _generate_dates(self, year: int) -> Generator[Tuple[EntryType, str], None, None]:
+    def _generate_dates(
+        self, year: int
+    ) -> Generator[Tuple[EntryType, str], None, None]:
         """Generate sequence of dates and week headers for the year"""
         current_date = datetime(year, 1, 1)
         current_week = None
-        
+
         while current_date.year == year:
             week_number = current_date.isocalendar()[1]
-            
+
             if week_number != current_week:
                 yield EntryType.WEEK_HEADER, f"Week {week_number}"
                 current_week = week_number
-            
+
             yield EntryType.DATE, current_date.strftime("%A, %B %-d")
             current_date += timedelta(days=1)
 
@@ -86,30 +95,33 @@ class ActivityTracker:
         clear_range = f"{self.sheet_name}!A1:Z1000"
         try:
             self.service.spreadsheets().values().batchClear(
-                spreadsheetId=self.spreadsheet_id,
-                body={"ranges": [clear_range]}
+                spreadsheetId=self.spreadsheet_id, body={"ranges": [clear_range]}
             ).execute()
         except Exception as e:
             logger.error(f"Error clearing sheet: {e}")
             raise SheetError(f"Failed to clear sheet: {str(e)}")
 
-    def initialize_year_structure(self, year: Optional[int] = None, force: bool = False) -> None:
+    def initialize_year_structure(
+        self, year: Optional[int] = None, force: bool = False
+    ) -> None:
         """Initialize the spreadsheet with all weeks and days of the year."""
         year = year or datetime.now().year
         logger.info(f"Initializing year structure for {year}")
-        
+
         if not force:
             current_dates = self.get_current_dates()
             date_gen = self._generate_dates(year)
             expected_dates = [date_str for _, date_str in date_gen]
-            
+
             if self._validate_current_structure(current_dates, expected_dates):
                 logger.info("Sheet is already properly initialized")
                 return
 
         self._perform_initialization(year)
 
-    def _validate_current_structure(self, current: List[str], expected: List[str]) -> bool:
+    def _validate_current_structure(
+        self, current: List[str], expected: List[str]
+    ) -> bool:
         """Validate if current sheet structure matches expected structure"""
         return len(current) == len(expected) and all(
             curr == exp for curr, exp in zip(current, expected)
@@ -120,18 +132,18 @@ class ActivityTracker:
         logger.info("Starting sheet initialization")
         self.clear_sheet()
         self.update_header_row()
-        
+
         batch = []
         for entry_type, value in self._generate_dates(year):
             batch.append([value])
-            
+
             if len(batch) >= self.BATCH_SIZE:
                 self.append_to_sheet_formatted(batch)
                 batch = []
-        
+
         if batch:  # Don't forget remaining entries
             self.append_to_sheet_formatted(batch)
-        
+
         logger.info("Sheet initialization completed successfully")
 
     @retry.Retry()
@@ -143,7 +155,7 @@ class ActivityTracker:
                 range=f"{self.sheet_name}!A1",
                 valueInputOption="RAW",
                 insertDataOption="INSERT_ROWS",
-                body={'values': values}
+                body={"values": values},
             ).execute()
         except Exception as e:
             logger.error(f"Error appending to sheet: {e}")
@@ -190,13 +202,15 @@ class ActivityTracker:
     @retry.Retry()
     def update_row(self, row_index: int, values: List[float]) -> None:
         """Update an entire row with new values"""
-        range_name = f"{self.sheet_name}!A{row_index}:{chr(65 + len(values))}{row_index}"
+        range_name = (
+            f"{self.sheet_name}!A{row_index}:{chr(65 + len(values))}{row_index}"
+        )
         try:
             self.service.spreadsheets().values().update(
                 spreadsheetId=self.spreadsheet_id,
                 range=range_name,
                 valueInputOption="USER_ENTERED",
-                body={"values": [values]}
+                body={"values": [values]},
             ).execute()
         except Exception as e:
             logger.error(f"Error updating row: {e}")
@@ -206,27 +220,31 @@ class ActivityTracker:
         """Process a new activity entry with validation"""
         if duration < 0:
             raise ValueError("Duration cannot be negative")
-            
-        logger.info(f"Processing new entry: {activity} for {date.date()} - {duration} hours")
-        
+
+        logger.info(
+            f"Processing new entry: {activity} for {date.date()} - {duration} hours"
+        )
+
         self.update_activities_header(activity)
         date_row_index = self.get_date_row_index(date)
-        
+
         if not date_row_index:
             raise ValueError(f"Could not find row for date: {date}")
-            
+
         self._update_activity_duration(date_row_index, activity, duration)
 
-    def _update_activity_duration(self, row_index: int, activity: str, duration: float) -> None:
+    def _update_activity_duration(
+        self, row_index: int, activity: str, duration: float
+    ) -> None:
         """Update the duration for a specific activity"""
         current_values = self.get_row_values(row_index)
         activities = self.get_activity_columns()
         activity_index = activities.index(activity) + 1
-        
+
         current_values = self._ensure_row_length(current_values, activity_index)
         current_duration = float(current_values[activity_index] or 0)
         current_values[activity_index] = current_duration + duration
-        
+
         self.update_row(row_index, current_values)
 
     @staticmethod
@@ -246,7 +264,7 @@ class ActivityTracker:
                 spreadsheetId=self.spreadsheet_id,
                 range=range_name,
                 valueInputOption="USER_ENTERED",
-                body={"values": [header_row]}
+                body={"values": [header_row]},
             ).execute()
         except Exception as e:
             logger.error(f"Error updating header row: {e}")
@@ -266,10 +284,12 @@ class ActivityTracker:
         range_name = f"{self.sheet_name}!A1:Z1"
 
         try:
-            result = self.service.spreadsheets().values().get(
-                spreadsheetId=self.spreadsheet_id,
-                range=range_name
-            ).execute()
+            result = (
+                self.service.spreadsheets()
+                .values()
+                .get(spreadsheetId=self.spreadsheet_id, range=range_name)
+                .execute()
+            )
 
             if "values" in result and result["values"]:
                 headers = result["values"][0]
@@ -280,23 +300,22 @@ class ActivityTracker:
             logger.error(f"Error reading headers: {e}")
             raise SheetError(f"Failed to read activity columns: {str(e)}")
 
+
 if __name__ == "__main__":
     import os
     from dotenv import load_dotenv
-    
+
     load_dotenv()
-    
+
     SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
     SHEET_NAME = os.getenv("SHEET_NAME")
     CREDENTIALS_PATH = os.getenv("CREDENTIALS_PATH")
-    
+
     if not all([SPREADSHEET_ID, SHEET_NAME, CREDENTIALS_PATH]):
         raise EnvironmentError("Missing required environment variables")
-    
+
     tracker = ActivityTracker(CREDENTIALS_PATH, SPREADSHEET_ID, SHEET_NAME)
     tracker.initialize_year_structure()
     tracker.process_new_entry(
-        date=datetime.now() + timedelta(days=2),
-        activity="Reading",
-        duration=1.5
+        date=datetime.now() + timedelta(days=2), activity="Reading", duration=1.5
     )
