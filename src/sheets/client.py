@@ -44,7 +44,7 @@ class GoogleSheetsClient:
             raise SheetError(f"Could not initialize sheets service: {str(e)}")
 
     def initialize_year_structure(
-        self, sheet_name:str, year: Optional[int] = None, force: bool = False
+        self, sheet_name: str, year: Optional[int] = None, force: bool = False
     ) -> None:
         """Initialize the spreadsheet with all weeks and days of the year."""
         year = year or datetime.now().year
@@ -134,7 +134,9 @@ class GoogleSheetsClient:
         logger.info("Sheet initialization completed successfully")
 
     @retry.Retry()
-    def append_to_sheet_formatted(self, sheet_name: str, values: List[List[str]]) -> None:
+    def append_to_sheet_formatted(
+        self, sheet_name: str, values: List[List[str]]
+    ) -> None:
         """Append rows to the sheet with retry logic"""
         try:
             self.service.spreadsheets().values().append(
@@ -151,7 +153,7 @@ class GoogleSheetsClient:
     @retry.Retry()
     def get_date_row_index(self, sheet_name: str, date: datetime) -> Optional[int]:
         """Find the row index for a given date"""
-        date_str = date.strftime("%A, %B %d")
+        date_str = datetime.fromisoformat(date).strftime("%A, %B %d")
         range_name = f"{sheet_name}!A:A"
         try:
             result = (
@@ -189,9 +191,7 @@ class GoogleSheetsClient:
     @retry.Retry()
     def update_row(self, sheet_name: str, row_index: int, values: List[float]) -> None:
         """Update an entire row with new values"""
-        range_name = (
-            f"{sheet_name}!A{row_index}:{chr(65 + len(values))}{row_index}"
-        )
+        range_name = f"{sheet_name}!A{row_index}:{chr(65 + len(values))}{row_index}"
         try:
             self.service.spreadsheets().values().update(
                 spreadsheetId=self.spreadsheet_id,
@@ -240,7 +240,9 @@ class GoogleSheetsClient:
         return values + [0] * (required_length + 1 - len(values))
 
     @retry.Retry()
-    def update_header_row(self, sheet_name: str, activities: Optional[List[str]] = None) -> None:
+    def update_header_row(
+        self, sheet_name: str, activities: Optional[List[str]] = None
+    ) -> None:
         """Update the header row with given activities"""
         activities = activities or []
         header_row = ["Date"] + activities

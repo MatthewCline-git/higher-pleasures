@@ -61,7 +61,7 @@ def main():
     telegram_handler = TelegramHandler(
         token=config["TELEGRAM_BOT_API_KEY"],
         activity_tracker=tracker,
-        allowed_user_ids=list(user_sheet_mapping.keys())
+        allowed_user_ids=list(user_sheet_mapping.keys()),
     )
 
     print("🤖 Starting Telegram bot...")

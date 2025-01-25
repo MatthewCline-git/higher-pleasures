@@ -30,23 +30,27 @@ class ActivityTracker:
         sheet_name = self.user_sheet_mapping.get(user_id)
         if not sheet_name:
             raise ValueError(f"No sheet mapping found for {user_id=}")
-        
+
         existing_categories = self.sheets_client.get_activity_columns(sheet_name)
         activities = self.activity_parser.parse_message(message, existing_categories)
 
-        date = datetime.now()
         for activity in activities:
             self.process_new_entry(
-                sheet_name=sheet_name, date=date, activity=activity["activity"], duration=activity["duration"]
+                sheet_name=sheet_name,
+                date=activity["date"],
+                activity=activity["activity"],
+                duration=activity["duration"],
             )
 
-    def process_new_entry(self, sheet_name: str, date: datetime, activity: str, duration: float) -> None:
+    def process_new_entry(
+        self, sheet_name: str, date: datetime, activity: str, duration: float
+    ) -> None:
         """Process a new activity entry with validation"""
         if duration < 0:
             raise ValueError("Duration cannot be negative")
 
         logger.info(
-            f"Processing new entry for {sheet_name}: {activity} for {date.date()} - {duration} hours"
+            f"Processing new entry for {sheet_name}: {activity} for {date} - {duration} hours"
         )
 
         self.sheets_client.update_activities_header(sheet_name, activity)
@@ -61,7 +65,9 @@ class ActivityTracker:
         self, sheet_name: str, row_index: int, activity: str, duration: float
     ) -> None:
         """Update the duration for a specific activity"""
-        current_values = self.sheets_client.get_row_values(sheet_name=sheet_name, row_index=row_index)
+        current_values = self.sheets_client.get_row_values(
+            sheet_name=sheet_name, row_index=row_index
+        )
         activities = self.sheets_client.get_activity_columns(sheet_name=sheet_name)
         activity_index = activities.index(activity) + 1
 
@@ -69,7 +75,9 @@ class ActivityTracker:
         current_duration = float(current_values[activity_index] or 0)
         current_values[activity_index] = current_duration + duration
 
-        self.sheets_client.update_row(sheet_name=sheet_name, row_index=row_index, values=current_values)
+        self.sheets_client.update_row(
+            sheet_name=sheet_name, row_index=row_index, values=current_values
+        )
 
     @staticmethod
     def _ensure_row_length(values: list[float], required_length: int) -> list[float]:

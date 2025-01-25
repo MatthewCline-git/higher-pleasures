@@ -1,5 +1,5 @@
 import json
-
+from datetime import datetime, timedelta
 from openai import OpenAI
 
 # class ActivityParser(Protocol):
@@ -16,75 +16,67 @@ class OpenAIActivityParser:
         self.confidence_threshold = confidence_threshold
 
     def _generate_system_prompt(self, existing_activities) -> str:
-        return f"""Extract activities and their durations from the message. Multiple activities may be mentioned.
+        return f"""Extract activities, their durations, and dates from the message. Multiple activities may be mentioned.
 Existing activity categories are: {", ".join(existing_activities)}
 
 If a described activity closely matches an existing category, use that category.
 Always convert duration to hours (e.g., 30 minutes = 0.5 hours). If there is no concrete duration number in the input, estimate.
 
+For dates:
+- For relative dates like "yesterday", "last night", return days_ago as an integer (yesterday = 1, today = 0)
+- For explicit dates like "January 9th", return as "MM/DD" format
+- If no date is mentioned, assume today (days_ago = 0)
+
 Examples:
-Input: "Went for a run this morning for 30 minutes"
+Input: "Yesterday I went for a run for 30 minutes"
 Response: {{
     "activities": [
         {{
             "activity": "Running",
             "duration": 0.5,
             "confidence": 1.0,
-            "matched_category": "Running"
+            "matched_category": "Running",
+            "days_ago": 1
         }}
     ]
 }}
 
-Input: "Today I biked for an hour and read for 30 minutes"
-Response: {{
-    "activities": [
-        {{
-            "activity": "Biking",
-            "duration": 1.0,
-            "confidence": 0.9,
-            "matched_category": "Biking"
-        }},
-        {{
-            "activity": "Reading",
-            "duration": 0.5,
-            "confidence": 1.0,
-            "matched_category": "Reading"
-        }}
-    ]
-}}
-
-Input: "Meditated for 20 minutes and did yoga for 45 minutes this morning"
+Input: "On January 9th I meditated for 20 minutes and did yoga for 45 minutes"
 Response: {{
     "activities": [
         {{
             "activity": "Meditation",
             "duration": 0.33,
             "confidence": 0.95,
-            "matched_category": "Meditation"
+            "matched_category": "Meditation",
+            "date": "01/09"
         }},
         {{
             "activity": "Yoga",
             "duration": 0.75,
             "confidence": 1.0,
-            "matched_category": "Yoga"
+            "matched_category": "Yoga",
+            "date": "01/09"
         }}
     ]
 }}
 
-Input: "Did calisthenics in the park and practiced piano afterwards"
+Input: "Last night I practiced guitar and this morning I went swimming"
 Response: {{
     "activities": [
         {{
-            "activity": "Calisthenics",
+            "activity": "Guitar",
             "duration": 1.0,
-            "confidence": 0.9,
-            "matched_category": "Working out"
+            "confidence": 0.2,
+            "matched_category": null,
+            "days_ago": 1
         }},
         {{
-            "activity": "Piano",
+            "activity": "Swimming",
             "duration": 0.5,
-            "confidence": 0.2,
-            "matched_category": null
+            "confidence": 1.0,
+            "matched_category": "Swimming",
+            "days_ago": 0
         }}
     ]
 }}
@@ -93,7 +85,9 @@ Return JSON with an "activities" array containing objects with:
 - activity: The activity name (use matched_category if confidence > {self.confidence_threshold})
 - duration: Duration in hours (convert minutes to decimal hours)
 - confidence: How confident (0-1) this matches an existing category
-- matched_category: The existing category it matches, if any"""
+- matched_category: The existing category it matches, if any
+- days_ago: Integer for relative dates (today = 0, yesterday = 1, etc.)
+- date: "MM/DD" string for explicit dates (only include if an explicit date was given)"""
 
     def parse_message(self, message: str, existing_activities) -> list:
         """Parse a natural language message into multiple activities and durations"""
@@ -109,18 +103,29 @@ Return JSON with an "activities" array containing objects with:
             response_format={"type": "json_object"},
         )
         result = json.loads(response.choices[0].message.content)
-        
+
         processed_activities = []
+        current_date = datetime.now().date()
         for activity_data in result["activities"]:
             if (
                 activity_data.get("matched_category")
                 and activity_data.get("confidence", 0) > self.confidence_threshold
             ):
                 activity_data["activity"] = activity_data["matched_category"]
-                
-            processed_activities.append({
-                "activity": activity_data["activity"],
-                "duration": activity_data["duration"],
-            })
-        
+
+            if "date" in activity_data:
+                month, day = map(int, activity_data["date"].split("/"))
+                activity_date = current_date.replace(month=month, day=day)
+            else:  # time delta
+                days_ago = activity_data.get("days_ago", 0)
+                activity_date = current_date - timedelta(days=days_ago)
+
+            processed_activities.append(
+                {
+                    "activity": activity_data["activity"],
+                    "duration": activity_data["duration"],
+                    "date": activity_date.isoformat(),
+                }
+            )
+
         return processed_activities
