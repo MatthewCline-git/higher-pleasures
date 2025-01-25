@@ -86,23 +86,49 @@ class TelegramHandler:
         self, update: Update, context: ContextTypes.DEFAULT_TYPE
     ) -> None:
         """Handle incoming activity messages"""
-        if not self._is_user_allowed(update):
-            return
-
         user_id = update.effective_user.id
         if user_id not in self.allowed_user_ids:
-            await update.message.reply_text(
-                "❌ You don't have a configured habit tracker."
-            )
+            print(f"User {user_id} not in allowed users: {self.allowed_user_ids}")
+            if update.effective_chat.type == "private":
+                await update.message.reply_text(
+                    "❌ You don't have a configured habit tracker."
+                )
             return
 
         message_text = update.message.text
+
+        # For group chats, only process messages that mention the bot
+        if update.effective_chat.type in ["group", "supergroup"]:
+            print("Processing group chat message")
+            if update.message.entities:
+                bot_mentioned = False
+                for entity in update.message.entities:
+                    if entity.type == "mention":
+                        mention = message_text[
+                            entity.offset : entity.offset + entity.length
+                        ]
+                        print(f"Found mention: {mention}")
+                        print(f"Bot username: @{context.bot.username}")
+                        if mention == f"@{context.bot.username}":
+                            bot_mentioned = True
+                            message_text = message_text.replace(mention, "").strip()
+                            break
+
+                if not bot_mentioned:
+                    print("Bot not mentioned, ignoring message")
+                    return
+            else:
+                print("No entities in message, ignoring")
+                return
+
         try:
+            print(f"Processing activity: {message_text}")
             self.activity_tracker.track_activity(user_id=user_id, message=message_text)
             await update.message.reply_text("✅ Activity tracked!")
 
         except Exception as e:
             logger.error(f"Error tracking activity: {e}")
+            print(f"Error tracking activity: {e}")
             await update.message.reply_text(
                 "❌ Sorry, I couldn't track that activity. Please try again."
             )
@@ -115,13 +141,25 @@ class TelegramHandler:
 
     def start_polling(self) -> None:
         """Start the bot polling for messages"""
-        # Register handlers
+        print("Starting bot...")
+        print(f"Allowed users: {self.allowed_user_ids}")
+
+        # Register handlers with modified filters
         self.application.add_handler(CommandHandler("start", self.start))
         self.application.add_handler(CommandHandler("help", self.help))
         self.application.add_handler(CommandHandler("status", self.status))
+
+        # Add handler for both private and group messages
         self.application.add_handler(
-            MessageHandler(filters.TEXT & ~filters.COMMAND, self.track_activity)
+            MessageHandler(
+                (
+                    filters.TEXT
+                    & ~filters.COMMAND
+                    & (filters.ChatType.GROUPS | filters.ChatType.PRIVATE)
+                ),
+                self.track_activity,
+            )
         )
 
-        # Start polling
+        print("Handlers registered, starting polling...")
         self.application.run_polling()
