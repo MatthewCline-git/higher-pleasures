@@ -25,19 +25,20 @@ class ActivityTracker:
         for sheet_name in set(user_sheet_mapping.values()):
             self.sheets_client.initialize_year_structure(sheet_name, self.year)
 
-    def track_activity(self, user_id: int, message: str, date: Optional[datetime] = None) -> None:
+    def track_activity(self, user_id: int, message: str) -> None:
         """Track a new activity from a natural language message"""
         sheet_name = self.user_sheet_mapping.get(user_id)
         if not sheet_name:
             raise ValueError(f"No sheet mapping found for {user_id=}")
         
         existing_categories = self.sheets_client.get_activity_columns(sheet_name)
-        parsed = self.activity_parser.parse_message(message, existing_categories)
+        activities = self.activity_parser.parse_message(message, existing_categories)
 
-        date = date or datetime.now()
-        self.process_new_entry(
-            sheet_name=sheet_name, date=date, activity=parsed["activity"], duration=parsed["duration"]
-        )
+        date = datetime.now()
+        for activity in activities:
+            self.process_new_entry(
+                sheet_name=sheet_name, date=date, activity=activity["activity"], duration=activity["duration"]
+            )
 
     def process_new_entry(self, sheet_name: str, date: datetime, activity: str, duration: float) -> None:
         """Process a new activity entry with validation"""

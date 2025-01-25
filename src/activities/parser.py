@@ -16,69 +16,87 @@ class OpenAIActivityParser:
         self.confidence_threshold = confidence_threshold
 
     def _generate_system_prompt(self, existing_activities) -> str:
-        return f"""Extract activity and duration from the message. 
+        return f"""Extract activities and their durations from the message. Multiple activities may be mentioned.
 Existing activity categories are: {", ".join(existing_activities)}
 
-If the described activity closely matches an existing category, use that category.
+If a described activity closely matches an existing category, use that category.
 Always convert duration to hours (e.g., 30 minutes = 0.5 hours). If there is no concrete duration number in the input, estimate.
 
 Examples:
 Input: "Went for a run this morning for 30 minutes"
 Response: {{
-    "activity": "Running",
-    "duration": 0.5,
-    "confidence": 1.0,
-    "matched_category": "Running"
+    "activities": [
+        {{
+            "activity": "Running",
+            "duration": 0.5,
+            "confidence": 1.0,
+            "matched_category": "Running"
+        }}
+    ]
 }}
 
-Input: "Did some weightlifting for an hour and a half"
+Input: "Today I biked for an hour and read for 30 minutes"
 Response: {{
-    "activity": "Working out",
-    "duration": 1.5,
-    "confidence": 0.9,
-    "matched_category": "Working out"
+    "activities": [
+        {{
+            "activity": "Biking",
+            "duration": 1.0,
+            "confidence": 0.9,
+            "matched_category": "Biking"
+        }},
+        {{
+            "activity": "Reading",
+            "duration": 0.5,
+            "confidence": 1.0,
+            "matched_category": "Reading"
+        }}
+    ]
 }}
 
-Input: "Read War and Peace for 45 mins"
+Input: "Meditated for 20 minutes and did yoga for 45 minutes this morning"
 Response: {{
-    "activity": "Reading",
-    "duration": 0.75,
-    "confidence": 1.0,
-    "matched_category": "Reading"
+    "activities": [
+        {{
+            "activity": "Meditation",
+            "duration": 0.33,
+            "confidence": 0.95,
+            "matched_category": "Meditation"
+        }},
+        {{
+            "activity": "Yoga",
+            "duration": 0.75,
+            "confidence": 1.0,
+            "matched_category": "Yoga"
+        }}
+    ]
 }}
 
-Input: "Practiced guitar for two hours"
+Input: "Did calisthenics in the park and practiced piano afterwards"
 Response: {{
-    "activity": "Guitar",
-    "duration": 2.0,
-    "confidence": 0.2,
-    "matched_category": null
+    "activities": [
+        {{
+            "activity": "Calisthenics",
+            "duration": 1.0,
+            "confidence": 0.9,
+            "matched_category": "Working out"
+        }},
+        {{
+            "activity": "Piano",
+            "duration": 0.5,
+            "confidence": 0.2,
+            "matched_category": null
+        }}
+    ]
 }}
 
-Input: "Meditated before bed for twenty minutes"
-Response: {{
-    "activity": "Meditation",
-    "duration": 0.33,
-    "confidence": 0.95,
-    "matched_category": "Meditation"
-}}
-
-Input: "Did calisthenics in the park this afternoon"
-Response: {{
-    "activity": "Calisthenics",
-    "duration": 1.0,
-    "confidence": 0.9,
-    "matched_category": "Working out"
-}}
-
-Return JSON with:
+Return JSON with an "activities" array containing objects with:
 - activity: The activity name (use matched_category if confidence > {self.confidence_threshold})
 - duration: Duration in hours (convert minutes to decimal hours)
 - confidence: How confident (0-1) this matches an existing category
 - matched_category: The existing category it matches, if any"""
 
-    def parse_message(self, message: str, existing_activities) -> dict:
-        """Parse a natural language message into activity and duration"""
+    def parse_message(self, message: str, existing_activities) -> list:
+        """Parse a natural language message into multiple activities and durations"""
         response = self.client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
@@ -91,14 +109,18 @@ Return JSON with:
             response_format={"type": "json_object"},
         )
         result = json.loads(response.choices[0].message.content)
-
-        if (
-            result.get("matched_category")
-            and result.get("confidence", 0) > self.confidence_threshold
-        ):
-            result["activity"] = result["matched_category"]
-
-        return {
-            "activity": result["activity"],
-            "duration": result["duration"],
-        }
+        
+        processed_activities = []
+        for activity_data in result["activities"]:
+            if (
+                activity_data.get("matched_category")
+                and activity_data.get("confidence", 0) > self.confidence_threshold
+            ):
+                activity_data["activity"] = activity_data["matched_category"]
+                
+            processed_activities.append({
+                "activity": activity_data["activity"],
+                "duration": activity_data["duration"],
+            })
+        
+        return processed_activities
