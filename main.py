@@ -19,9 +19,9 @@ def load_config():
         "MY_SHEET_NAME": os.getenv("MY_SHEET_NAME"),
         "FRIEND_TELEGRAM_ID": os.getenv("FRIEND_TELEGRAM_ID"),
         "MY_TELEGRAM_ID": os.getenv("MY_TELEGRAM_ID"),
-        "CREDENTIALS_PATH": os.getenv("CREDENTIALS_PATH"),
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
         "TELEGRAM_BOT_API_KEY": os.getenv("TELEGRAM_BOT_API_KEY"),
+        "GOOGLE_CREDENTIALS": os.getenv("GOOGLE_CREDENTIALS"),
     }
 
     missing = [k for k, v in required_vars.items() if not v]
@@ -45,7 +45,6 @@ def main():
     # Initialize components
     sheets_client = GoogleSheetsClient(
         spreadsheet_id=config["SPREADSHEET_ID"],
-        credentials_path=config["CREDENTIALS_PATH"],
     )
 
     activity_parser = OpenAIActivityParser(
