@@ -15,5 +15,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Run the application
-CMD ["python", "-m", "src.main"]
+# Add debug echo statements
+RUN echo "#!/bin/sh" > /entrypoint.sh && \
+    echo "echo 'Starting application...'" >> /entrypoint.sh && \
+    echo "echo 'Python version:' && python --version" >> /entrypoint.sh && \
+    echo "echo 'Contents of src directory:' && ls -la src/" >> /entrypoint.sh && \
+    echo "echo 'Running main.py...' && python -m src.main" >> /entrypoint.sh && \
+    chmod +x /entrypoint.sh
+
+CMD ["/entrypoint.sh"]

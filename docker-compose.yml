@@ -1,0 +1,17 @@
+services:
+  activity-bot:
+    build: .
+    volumes:
+      - .:/app
+      - ~/.local/share/activity-bot:/data
+    environment:
+      - SPREADSHEET_ID=${SPREADSHEET_ID}
+      - FRIEND_SHEET_NAME=${FRIEND_SHEET_NAME}
+      - MY_SHEET_NAME=${MY_SHEET_NAME}
+      - FRIEND_TELEGRAM_ID=${FRIEND_TELEGRAM_ID}
+      - MY_TELEGRAM_ID=${MY_TELEGRAM_ID}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - TELEGRAM_BOT_API_KEY=${TELEGRAM_BOT_API_KEY}
+      - GOOGLE_CREDENTIALS=${GOOGLE_CREDENTIALS}
+    restart: unless-stopped
+    init: true
