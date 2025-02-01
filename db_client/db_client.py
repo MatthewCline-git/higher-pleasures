@@ -3,6 +3,7 @@ import os
 import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
+from typing import List
 
 logger = logging.getLogger(__name__)
 
@@ -11,13 +12,14 @@ class SQLiteClient:
     def __init__(self, database_dir_path: Path | None = None):
         self.database_dir_path = database_dir_path or Path("../../database/")
         self.database_path = self.database_dir_path / Path("higher-pleasures.db")
-        self._ensure_directory(self)
+        self._ensure_directory()
+        self._initialize_database()
 
     def _ensure_directory(self):
         os.makedirs(self.database_dir_path, exist_ok=True)
 
     @contextmanager
-    def _get_connection(self):
+    def _get_connection(self, autocommit=True):
         conn = sqlite3.connect(self.database_path)
         conn.row_factory = sqlite3.Row
         try:
@@ -36,6 +38,7 @@ class SQLiteClient:
                 last_name TEXT NOT NULL,
                 email TEXT,
                 cell TEXT NOT NULL,
+                telegram_id TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             """)
@@ -63,3 +66,63 @@ class SQLiteClient:
                 FOREIGN KEY (user_activity_id) REFERENCES activities(activity_id)
             );
             """)
+
+    def get_user_activities(self, user_id: str) -> List[str]:
+        with self._get_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT activity 
+                FROM activities 
+                WHERE user_id = ?
+                """,
+                (user_id,),
+            )
+            return [row[0] for row in cursor.fetchall()]
+
+    def get_user_activity_id_from_activity(self, user_id: str, activity: str) -> int:
+        with self._get_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT user_activity_id 
+                FROM activities 
+                WHERE user_id = ? AND activity = ?
+                """,
+                (user_id, activity),
+            )
+            result = cursor.fetchall()
+            return result[0][0] if result else None
+
+    def insert_activity(self, user_id: str, activity: str) -> None:
+        with self._get_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                INSERT INTO activities (user_id, activity) 
+                VALUES (?, ?)
+                """,
+                (user_id, activity),
+            )
+            connection.commit()
+            activity_id = cursor.lastrowid
+            return activity_id
+
+    def insert_entry(
+        self,
+        db_user_id: int,
+        user_activity_id: int,
+        date: str,
+        duration_minutes: int,
+        raw_input: str,
+    ) -> None:
+        with self._get_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                INSERT INTO entries (user_id, user_activity_id, date, duration_minutes, raw_input) 
+                VALUES (?, ?, ?, ?, ?)
+                """,
+                (db_user_id, user_activity_id, date, duration_minutes, raw_input),
+            )
+            connection.commit()
