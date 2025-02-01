@@ -168,7 +168,7 @@ class GoogleSheetsClient:
     @retry.Retry()
     def get_date_row_index(self, sheet_name: str, date: datetime) -> Optional[int]:
         """Find the row index for a given date"""
-        date_str = datetime.fromisoformat(date).strftime("%A, %B %d")
+        date_str = datetime.fromisoformat(date).strftime("%A, %B %-d")
         range_name = f"{sheet_name}!A:A"
         try:
             result = (
