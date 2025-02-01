@@ -7,6 +7,7 @@ from src.activities.parser import OpenAIActivityParser
 from src.activities.tracker import ActivityTracker
 from src.messaging.telegram_handler import TelegramHandler
 from src.sheets.client import GoogleSheetsClient
+from db_client.db_client import SQLiteClient
 
 
 def load_config():
@@ -20,7 +21,8 @@ def load_config():
         "FRIEND_TELEGRAM_ID": os.getenv("FRIEND_TELEGRAM_ID"),
         "MY_TELEGRAM_ID": os.getenv("MY_TELEGRAM_ID"),
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-        "TELEGRAM_BOT_API_KEY": os.getenv("TELEGRAM_BOT_API_KEY"),
+        "TELEGRAM_BOT_API_KEY": os.getenv("TELEGRAM_TEST_BOT_API_KEY")
+        or os.getenv("TELEGRAM_BOT_API_KEY"),
         "GOOGLE_CREDENTIALS": os.getenv("GOOGLE_CREDENTIALS"),
     }
 
@@ -47,6 +49,8 @@ def main():
         spreadsheet_id=config["SPREADSHEET_ID"],
     )
 
+    db_client = SQLiteClient()
+
     activity_parser = OpenAIActivityParser(
         api_key=config["OPENAI_API_KEY"], confidence_threshold=0.7
     )
@@ -55,6 +59,7 @@ def main():
         sheets_client=sheets_client,
         activity_parser=activity_parser,
         user_sheet_mapping=user_sheet_mapping,
+        db_client=db_client,
     )
 
     telegram_handler = TelegramHandler(
