@@ -1,10 +1,11 @@
-from contextlib import contextmanager
+import logging
 import os
 import sqlite3
-import logging
+from contextlib import contextmanager
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
 
 class SQLiteClient:
     def __init__(self, database_dir_path: Path | None = None):
@@ -14,12 +15,12 @@ class SQLiteClient:
 
     def _ensure_directory(self):
         os.makedirs(self.database_dir_path, exist_ok=True)
-    
+
     @contextmanager
     def _get_connection(self):
         conn = sqlite3.connect(self.database_path)
         conn.row_factory = sqlite3.Row
-        try: 
+        try:
             yield conn
         finally:
             conn.close()
@@ -62,4 +63,3 @@ class SQLiteClient:
                 FOREIGN KEY (user_activity_id) REFERENCES activities(activity_id)
             );
             """)
-

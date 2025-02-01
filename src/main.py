@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 
 from src.activities.parser import OpenAIActivityParser
 from src.activities.tracker import ActivityTracker
-from src.sheets.client import GoogleSheetsClient
 from src.messaging.telegram_handler import TelegramHandler
+from src.sheets.client import GoogleSheetsClient
 
 
 def load_config():

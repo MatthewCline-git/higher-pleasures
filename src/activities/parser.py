@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timedelta
+
 from openai import OpenAI
 
 # class ActivityParser(Protocol):

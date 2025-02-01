@@ -1,15 +1,10 @@
 import logging
 from datetime import datetime
-from typing import Optional, Callable
+from typing import Callable, Optional
 
 from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    MessageHandler,
-    ContextTypes,
-    filters,
-)
+from telegram.ext import (Application, CommandHandler, ContextTypes,
+                          MessageHandler, filters)
 
 from ..activities.tracker import ActivityTracker
 

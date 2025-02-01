@@ -34,19 +34,21 @@ class GoogleSheetsClient:
 
     def _get_google_credentials(self):
         try:
-            creds_json = os.getenv('GOOGLE_CREDENTIALS')
+            creds_json = os.getenv("GOOGLE_CREDENTIALS")
             if not creds_json:
                 raise ValueError("GOOGLE_CREDENTIALS environment variable not found")
-            
+
             creds_dict = json.loads(creds_json)
             return service_account.Credentials.from_service_account_info(
-                creds_dict,
-                scopes=self.SCOPES
+                creds_dict, scopes=self.SCOPES
             )
         except json.JSONDecodeError:
-            raise ValueError("GOOGLE_CREDENTIALS environment variable contains invalid JSON")
+            raise ValueError(
+                "GOOGLE_CREDENTIALS environment variable contains invalid JSON"
+            )
         except Exception as e:
             raise Exception(f"Failed to initialize Google credentials: {str(e)}")
+
     def _build_sheets_service(self):
         """Create and return an authorized Sheets API service object"""
         try:
