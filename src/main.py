@@ -1,4 +1,5 @@
 # src/main.py
+import logging
 import os
 
 from dotenv import load_dotenv
@@ -6,6 +7,7 @@ from dotenv import load_dotenv
 from db_client.db_client import SQLiteClient
 from src.activities.parser import OpenAIActivityParser
 from src.activities.tracker import ActivityTracker
+from src.logging.logging_config import setup_logging
 from src.messaging.telegram_handler import TelegramHandler
 from src.messaging.telegram_onboarder import TelegramOnboarder
 from src.sheets.client import GoogleSheetsClient
@@ -37,9 +39,11 @@ def load_config():
 
 
 def main():
-    # Load configuration
-    config = load_config()
+    setup_logging()
+    logger = logging.getLogger(__name__)
+    logger.info("Starting Higher Pleasures Bot")
 
+    config = load_config()
     user_sheet_mapping = {
         int(config["FRIEND_TELEGRAM_ID"]): config["FRIEND_SHEET_NAME"],
         int(config["MY_TELEGRAM_ID"]): config["MY_SHEET_NAME"],
@@ -69,7 +73,7 @@ def main():
         db_client=db_client,
     )
 
-    print("🤖 Starting Telegram bot...")
+    logger.info("🤖 Starting Telegram bot...")
     telegram_handler.start_polling()
 
 
