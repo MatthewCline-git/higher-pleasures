@@ -134,7 +134,7 @@ class TelegramHandler:
 
         try:
             print(f"Processing activity: {message_text}")
-            self.activity_tracker.track_activity(user_id=user_id, message=message_text)
+            self.activity_tracker.track_activity(telegram_user_id=user_id, message=message_text)
             await update.message.reply_text("✅ Activity tracked!")
 
         except Exception as e:

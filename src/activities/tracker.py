@@ -40,7 +40,8 @@ class ActivityTracker:
         existing_categories = self.sheets_client.get_activity_columns(sheet_name)
 
         if self.db_client is not None:
-            existing_categories = self.db_client.get_user_activities()
+            db_user_id = self.db_client.get_user_id_from_telegram(telegram_user_id)
+            existing_categories = self.db_client.get_user_activities(user_id=db_user_id)
 
         activities = self.activity_parser.parse_message(message, existing_categories)
 
@@ -51,13 +52,14 @@ class ActivityTracker:
                 activity=activity["activity"],
                 duration=activity["duration"],
             )
-            self.process_new_entry(
-                db_user_id=db_user_id,
-                activity=activity["activity"],
-                date=activity["date"],
-                duration_minutes=activity["duration"] * 60,
-                raw_input=message,
-            )
+            if self.db_client is not None:
+                self.process_new_entry(
+                    db_user_id=db_user_id,
+                    activity=activity["activity"],
+                    date=activity["date"],
+                    duration_minutes=activity["duration"] * 60,
+                    raw_input=message,
+                )
 
     def process_new_entry(
         self,
@@ -71,7 +73,7 @@ class ActivityTracker:
         if self.db_client is None:
             return
 
-        user_activity_id = self.db_client.get_user_activity_id_from_activity(activity)
+        user_activity_id = self.db_client.get_user_activity_id_from_activity(user_id=db_user_id, activity=activity)
         if user_activity_id is None:
             user_activity_id = self.db_client.insert_activity(db_user_id, activity)
         self.db_client.insert_entry(

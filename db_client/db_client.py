@@ -139,7 +139,7 @@ class SQLiteClient:
             )
             connection.commit()
 
-    def get_user_id(self, telegram_id: str) -> str:
+    def get_user_id_from_telegram(self, telegram_id: str) -> str:
         with self._get_connection() as connection:
             cursor = connection.cursor()
             cursor.execute(
@@ -154,5 +154,5 @@ class SQLiteClient:
             return result[0][0] if result else None
         
     def is_user_allowed(self, telegram_id: str) -> bool:
-        return self.get_user_id(telegram_id) is not None
+        return self.get_user_id_from_telegram(telegram_id) is not None
 
