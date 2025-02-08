@@ -3,7 +3,7 @@ services:
     build: .
     volumes:
       - .:/app
-      - /data/sqlite:/data/sqlite:rw
+      - /data:/data:rw
     environment:
       - SPREADSHEET_ID=${SPREADSHEET_ID}
       - FRIEND_SHEET_NAME=${FRIEND_SHEET_NAME}
@@ -13,12 +13,12 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - TELEGRAM_BOT_API_KEY=${TELEGRAM_BOT_API_KEY}
       - GOOGLE_CREDENTIALS=${GOOGLE_CREDENTIALS}
-      # Updated database URL to match volume mount point
-      - DATABASE_URL=/data/sqlite/higher-pleasures.db
+      - DATABASE_URL=/data/db/higher-pleasures.db
+      - LOG_DIR=/data/logs
     restart: unless-stopped
     init: true
     user: "1000:1000"
 
 volumes:
   activity_data:
-    name: activity_bot_data  
+    name: activity_bot_data
