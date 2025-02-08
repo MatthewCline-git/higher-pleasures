@@ -10,19 +10,13 @@ logger = logging.getLogger(__name__)
 
 class SQLiteClient:
     def __init__(self, database_dir_path: Path | None = None):
-        database_url = os.getenv('DATABASE_URL')
-        if database_url:
-            self.database_path = Path(database_url)
-            self.database_dir_path = self.database_path.parent
-        else:
-            self.database_dir_path = database_dir_path or Path("./database/")
-            self.database_path = self.database_dir_path / "higher-pleasures.db"
+        self.database_dir_path = database_dir_path or Path("../../database/")
+        self.database_path = self.database_dir_path / Path("higher-pleasures.db")
         self._ensure_directory()
         self._initialize_database()
 
     def _ensure_directory(self):
         os.makedirs(self.database_dir_path, exist_ok=True)
-        logger.info(f"Using database at {self.database_path}")
 
     @contextmanager
     def _get_connection(self, autocommit=True):
