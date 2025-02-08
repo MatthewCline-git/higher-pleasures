@@ -98,48 +98,41 @@ class TelegramHandler:
     ) -> None:
         """Handle incoming activity messages"""
         user_id = update.effective_user.id
-        if not self.db_client.is_user_allowed(user_id):
-            print(f"User {user_id} not in allowed users:")
-            if update.effective_chat.type == "private":
-                await update.message.reply_text(
-                    "❌ You don't have a configured habit tracker. Send '/register' to get started."
-                )
-            return
-
         message_text = update.message.text
+        is_group_chat = update.effective_chat.type in ["group", "supergroup"]
 
-        # For group chats, only process messages that mention the bot
-        if update.effective_chat.type in ["group", "supergroup"]:
-            print("Processing group chat message")
-            if update.message.entities:
-                bot_mentioned = False
-                for entity in update.message.entities:
-                    if entity.type == "mention":
-                        mention = message_text[
-                            entity.offset : entity.offset + entity.length
-                        ]
-                        print(f"Found mention: {mention}")
-                        print(f"Bot username: @{context.bot.username}")
-                        if mention == f"@{context.bot.username}":
-                            bot_mentioned = True
-                            message_text = message_text.replace(mention, "").strip()
-                            break
-
-                if not bot_mentioned:
-                    print("Bot not mentioned, ignoring message")
-                    return
-            else:
-                print("No entities in message, ignoring")
+        if is_group_chat:
+            if not update.message.entities:
+                return
+            bot_mentioned = False
+            for entity in update.message.entities:
+                if entity.type == "mention":
+                    mention = message_text[entity.offset : entity.offset + entity.length]
+                    if mention == f"@{context.bot.username}":
+                        bot_mentioned = True
+                        message_text = message_text.replace(mention, "").strip()
+            if not bot_mentioned:
                 return
 
+        # Check user authorization
+        if not self.db_client.is_user_allowed(user_id):
+            unauthorized_message = (
+                "❌ You don't have a configured habit tracker. Send '/register' to get started."
+            )
+            
+            # For group chats, only respond if the bot was explicitly mentioned
+            if is_group_chat and bot_mentioned:
+                await update.message.reply_text(unauthorized_message)
+            elif not is_group_chat:  # Private chat
+                await update.message.reply_text(unauthorized_message)
+            return
+
         try:
-            print(f"Processing activity: {message_text}")
             self.activity_tracker.track_activity(telegram_user_id=user_id, message=message_text)
             await update.message.reply_text("✅ Activity tracked!")
 
         except Exception as e:
             logger.error(f"Error tracking activity: {e}")
-            print(f"Error tracking activity: {e}")
             await update.message.reply_text(
                 "❌ Sorry, I couldn't track that activity. Please try again."
             )
