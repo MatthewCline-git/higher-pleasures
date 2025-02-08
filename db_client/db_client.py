@@ -67,7 +67,15 @@ class SQLiteClient:
             );
             """)
 
-    def insert_user(self, user_id: str, first_name: str, last_name: str, cell: str, telegram_id: str, email: str | None = None) -> None:
+    def insert_user(
+        self,
+        user_id: str,
+        first_name: str,
+        last_name: str,
+        cell: str,
+        telegram_id: str,
+        email: str | None = None,
+    ) -> None:
         with self._get_connection() as connection:
             cursor = connection.cursor()
             cursor.execute(
@@ -152,7 +160,6 @@ class SQLiteClient:
             )
             result = cursor.fetchall()
             return result[0][0] if result else None
-        
+
     def is_user_allowed(self, telegram_id: str) -> bool:
         return self.get_user_id_from_telegram(telegram_id) is not None
-

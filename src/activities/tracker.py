@@ -73,7 +73,9 @@ class ActivityTracker:
         if self.db_client is None:
             return
 
-        user_activity_id = self.db_client.get_user_activity_id_from_activity(user_id=db_user_id, activity=activity)
+        user_activity_id = self.db_client.get_user_activity_id_from_activity(
+            user_id=db_user_id, activity=activity
+        )
         if user_activity_id is None:
             user_activity_id = self.db_client.insert_activity(db_user_id, activity)
         self.db_client.insert_entry(

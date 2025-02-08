@@ -12,7 +12,6 @@ from telegram.ext import (
 )
 
 from db_client.db_client import SQLiteClient
-
 from src.activities.tracker import ActivityTracker
 from src.messaging.telegram_onboarder import TelegramOnboarder
 
@@ -66,7 +65,6 @@ class TelegramHandler:
             )
             return
 
-
         await update.message.reply_text(
             "📝 How to use this bot:\n\n"
             "1. Send me messages about your activities\n"
@@ -87,7 +85,6 @@ class TelegramHandler:
             )
             return
 
-
         # TODO: Implement status retrieval from sheets
         await update.message.reply_text(
             "🎯 Today's activities:\n(Status feature coming soon!)"
@@ -107,7 +104,9 @@ class TelegramHandler:
             bot_mentioned = False
             for entity in update.message.entities:
                 if entity.type == "mention":
-                    mention = message_text[entity.offset : entity.offset + entity.length]
+                    mention = message_text[
+                        entity.offset : entity.offset + entity.length
+                    ]
                     if mention == f"@{context.bot.username}":
                         bot_mentioned = True
                         message_text = message_text.replace(mention, "").strip()
@@ -116,10 +115,8 @@ class TelegramHandler:
 
         # Check user authorization
         if not self.db_client.is_user_allowed(user_id):
-            unauthorized_message = (
-                "❌ You don't have a configured habit tracker. Send '/register' to get started."
-            )
-            
+            unauthorized_message = "❌ You don't have a configured habit tracker. Send '/register' to get started."
+
             # For group chats, only respond if the bot was explicitly mentioned
             if is_group_chat and bot_mentioned:
                 await update.message.reply_text(unauthorized_message)
@@ -128,7 +125,9 @@ class TelegramHandler:
             return
 
         try:
-            self.activity_tracker.track_activity(telegram_user_id=user_id, message=message_text)
+            self.activity_tracker.track_activity(
+                telegram_user_id=user_id, message=message_text
+            )
             await update.message.reply_text("✅ Activity tracked!")
 
         except Exception as e:

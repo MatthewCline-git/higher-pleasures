@@ -3,12 +3,12 @@ import os
 
 from dotenv import load_dotenv
 
+from db_client.db_client import SQLiteClient
 from src.activities.parser import OpenAIActivityParser
 from src.activities.tracker import ActivityTracker
 from src.messaging.telegram_handler import TelegramHandler
 from src.messaging.telegram_onboarder import TelegramOnboarder
 from src.sheets.client import GoogleSheetsClient
-from db_client.db_client import SQLiteClient
 
 
 def load_config():
@@ -66,7 +66,7 @@ def main():
     telegram_handler = TelegramHandler(
         token=config["TELEGRAM_BOT_API_KEY"],
         activity_tracker=tracker,
-        db_client=db_client
+        db_client=db_client,
     )
 
     print("🤖 Starting Telegram bot...")
