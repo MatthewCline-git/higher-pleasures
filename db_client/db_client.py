@@ -67,6 +67,18 @@ class SQLiteClient:
             );
             """)
 
+    def insert_user(self, user_id: str, first_name: str, last_name: str, cell: str, telegram_id: str, email: str | None = None) -> None:
+        with self._get_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                INSERT INTO users (user_id, first_name, last_name, cell, telegram_id, email) 
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                (user_id, first_name, last_name, cell, telegram_id, email),
+            )
+            connection.commit()
+
     def get_user_activities(self, user_id: str) -> List[str]:
         with self._get_connection() as connection:
             cursor = connection.cursor()
@@ -126,3 +138,21 @@ class SQLiteClient:
                 (db_user_id, user_activity_id, date, duration_minutes, raw_input),
             )
             connection.commit()
+
+    def get_user_id(self, telegram_id: str) -> str:
+        with self._get_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT user_id 
+                FROM users 
+                WHERE telegram_id = ?
+                """,
+                (telegram_id,),
+            )
+            result = cursor.fetchall()
+            return result[0][0] if result else None
+        
+    def is_user_allowed(self, telegram_id: str) -> bool:
+        return self.get_user_id(telegram_id) is not None
+

@@ -11,7 +11,10 @@ from telegram.ext import (
     filters,
 )
 
-from ..activities.tracker import ActivityTracker
+from db_client.db_client import SQLiteClient
+
+from src.activities.tracker import ActivityTracker
+from src.messaging.telegram_onboarder import TelegramOnboarder
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +26,7 @@ class TelegramHandler:
         self,
         token: str,
         activity_tracker: ActivityTracker,
-        allowed_user_ids: Optional[list[int]] = None,
+        db_client: SQLiteClient,
     ):
         """
         Initialize the Telegram handler
@@ -31,18 +34,18 @@ class TelegramHandler:
         Args:
             token: Telegram bot token
             activity_tracker: ActivityTracker instance
-            allowed_user_ids: List of Telegram user IDs that can use the bot
         """
         self.token = token
         self.activity_tracker = activity_tracker
-        self.allowed_user_ids = allowed_user_ids or []
         self.application = Application.builder().token(token).build()
+        self.db_client = db_client
+        self.onboarder = TelegramOnboarder(db_client)
 
     async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /start command"""
         if not self._is_user_allowed(update):
             await update.message.reply_text(
-                "Sorry, you are not authorized to use this bot."
+                "Welcome to your activity tracker! Send /register to get started."
             )
             return
 
@@ -58,7 +61,11 @@ class TelegramHandler:
     async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /help command"""
         if not self._is_user_allowed(update):
+            await update.message.reply_text(
+                "You need to register first! Send /register to get started."
+            )
             return
+
 
         await update.message.reply_text(
             "📝 How to use this bot:\n\n"
@@ -75,7 +82,11 @@ class TelegramHandler:
     async def status(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /status command"""
         if not self._is_user_allowed(update):
+            await update.message.reply_text(
+                "You need to register first! Send /register to get started."
+            )
             return
+
 
         # TODO: Implement status retrieval from sheets
         await update.message.reply_text(
@@ -87,11 +98,11 @@ class TelegramHandler:
     ) -> None:
         """Handle incoming activity messages"""
         user_id = update.effective_user.id
-        if user_id not in self.allowed_user_ids:
-            print(f"User {user_id} not in allowed users: {self.allowed_user_ids}")
+        if not self.db_client.is_user_allowed(user_id):
+            print(f"User {user_id} not in allowed users:")
             if update.effective_chat.type == "private":
                 await update.message.reply_text(
-                    "❌ You don't have a configured habit tracker."
+                    "❌ You don't have a configured habit tracker. Send '/register' to get started."
                 )
             return
 
@@ -135,16 +146,15 @@ class TelegramHandler:
 
     def _is_user_allowed(self, update: Update) -> bool:
         """Check if the user is allowed to use the bot"""
-        if not self.allowed_user_ids:
-            return True
-        return update.effective_user.id in self.allowed_user_ids
+        user_id = update.effective_user.id
+        return self.db_client.is_user_allowed(user_id)
 
     def start_polling(self) -> None:
         """Start the bot polling for messages"""
         print("Starting bot...")
-        print(f"Allowed users: {self.allowed_user_ids}")
 
         # Register handlers with modified filters
+        self.application.add_handler(self.onboarder.get_conversation_handler())
         self.application.add_handler(CommandHandler("start", self.start))
         self.application.add_handler(CommandHandler("help", self.help))
         self.application.add_handler(CommandHandler("status", self.status))
