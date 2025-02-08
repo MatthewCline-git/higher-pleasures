@@ -50,7 +50,7 @@ def main():
         spreadsheet_id=config["SPREADSHEET_ID"],
     )
 
-    db_client = SQLiteClient()
+    db_client = SQLiteClient(database_dir_path="./database/")
 
     activity_parser = OpenAIActivityParser(
         api_key=config["OPENAI_API_KEY"], confidence_threshold=0.7
