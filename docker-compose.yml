@@ -3,7 +3,7 @@ services:
     build: .
     volumes:
       - .:/app
-      - activity_data:/data/sqlite:rw
+      - /data/sqlite:/data/sqlite:rw
     environment:
       - SPREADSHEET_ID=${SPREADSHEET_ID}
       - FRIEND_SHEET_NAME=${FRIEND_SHEET_NAME}
@@ -17,6 +17,7 @@ services:
       - DATABASE_URL=/data/sqlite/higher-pleasures.db
     restart: unless-stopped
     init: true
+    user: "1000:1000"
 
 volumes:
   activity_data:
