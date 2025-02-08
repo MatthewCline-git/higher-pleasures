@@ -3,8 +3,7 @@ services:
     build: .
     volumes:
       - .:/app
-      - sqlite_data:/app/database 
-      - ~/.local/share/activity-bot:/data
+      - activity_data:/data/sqlite:rw
     environment:
       - SPREADSHEET_ID=${SPREADSHEET_ID}
       - FRIEND_SHEET_NAME=${FRIEND_SHEET_NAME}
@@ -14,9 +13,11 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - TELEGRAM_BOT_API_KEY=${TELEGRAM_BOT_API_KEY}
       - GOOGLE_CREDENTIALS=${GOOGLE_CREDENTIALS}
+      # Updated database URL to match volume mount point
       - DATABASE_URL=/data/sqlite/higher-pleasures.db
     restart: unless-stopped
     init: true
 
 volumes:
-  sqlite_data:
+  activity_data:
+    name: activity_bot_data  
