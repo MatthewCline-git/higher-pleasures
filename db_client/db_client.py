@@ -9,15 +9,17 @@ logger = logging.getLogger(__name__)
 
 
 class SQLiteClient:
-    def __init__(self, database_dir_path: Path | None = None):
-        self.database_dir_path = database_dir_path or Path("/data/sqlite/")
-        self.database_path = self.database_dir_path / Path("higher-pleasures.db")
-        # self._ensure_directory()
+    def __init__(self, data_dir_path: Path | None = None):
+        self.data_dir_path = data_dir_path or Path("/data")
+        self.database_dir_path = self.data_dir_path / "db"
+        self.database_path = self.database_dir_path / "higher-pleasures.db"
+        self._ensure_directory()
         self._initialize_database()
 
-    # def _ensure_directory(self):
-    #     os.makedirs(self.database_dir_path, exist_ok=True)
-
+    def _ensure_directory(self):
+        """Ensure all required directories exist"""
+        os.makedirs(self.database_dir_path, exist_ok=True)
+        
     @contextmanager
     def _get_connection(self, autocommit=True):
         conn = sqlite3.connect(self.database_path)
