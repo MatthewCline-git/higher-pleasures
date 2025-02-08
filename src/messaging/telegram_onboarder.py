@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Dict, Optional
+import re
+from typing import Dict, Optional, Tuple
 from db_client.db_client import SQLiteClient
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CallbackQueryHandler, ContextTypes, CommandHandler, ConversationHandler, MessageHandler, filters
@@ -100,10 +101,47 @@ class TelegramOnboarder:
         )
         return OnboardingState.AWAITING_CELL
     
+    def validate_and_format_us_phone(self, phone: str) -> Tuple[bool, str, Optional[str]]:
+        """
+        Validates and formats a US phone number.
+        Returns: (is_valid, error_message, formatted_number)
+        Formatted number will be in E.164 format: +1XXXXXXXXXX
+        """
+        # Remove all non-numeric characters
+        digits = re.sub(r'\D', '', phone)
+        
+        # Handle country code if provided
+        if digits.startswith('1'):
+            digits = digits[1:]
+        
+        # Check if we have exactly 10 digits
+        if len(digits) != 10:
+            return False, "Please enter a valid 10-digit US phone number.", None
+            
+        # Basic area code validation (can be expanded)
+        area_code = digits[:3]
+        if area_code.startswith('0') or area_code.startswith('1'):
+            return False, "Invalid area code.", None
+            
+        # Format to E.164
+        formatted = f"+1{digits}"
+        return True, "", formatted
+    
     async def handle_cell(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> OnboardingState:
         """Handle cell input"""
         user_id = update.effective_user.id
         cell = update.message.text.strip()
+        is_valid, error_msg, formatted_number = self.validate_and_format_us_phone(cell)
+
+        if not is_valid:
+            await update.message.reply_text(
+                f"❌ {error_msg}\n\n"
+                "Please enter your phone number in any standard US format:\n"
+                "(555) 123-4567\n"
+                "555-123-4567\n"
+                "5551234567"
+            )
+            return OnboardingState.AWAITING_CELL
 
         self.temp_user_data[user_id].cell = cell
 
