@@ -143,7 +143,6 @@ class TelegramHandler:
 
     def start_polling(self) -> None:
         """Start the bot polling for messages"""
-        print("Starting bot...")
 
         # Register handlers with modified filters
         self.application.add_handler(self.onboarder.get_conversation_handler())
@@ -163,5 +162,5 @@ class TelegramHandler:
             )
         )
 
-        print("Handlers registered, starting polling...")
+        logger.info("Handlers registered, starting polling...")
         self.application.run_polling()
