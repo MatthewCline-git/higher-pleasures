@@ -50,17 +50,18 @@ class TelegramOnboarder:
                     CallbackQueryHandler(self.handle_confirmation, pattern="^(confirm|restart)$")
                 ],
             },
-            fallbacks=[CommandHandler("cancel", self.cancel_registration)],)    
+            fallbacks=[CommandHandler("cancel", self.cancel_registration)],
+        )
     
     async def start_registration(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> OnboardingState:
         """Start the registration process"""
         user_id = update.effective_user.id
-
         self.temp_user_data[user_id] = UserRegistrationData(telegram_user_id=str(user_id))
 
         await update.message.reply_text(
             "👋 Welcome to the Activity Tracker! Let's get you set up.\n\n"
-            "What's your first name?"
+            "What's your first name?\n\n"
+            "(Use /cancel at any time to stop the registration process)"
         )
         return OnboardingState.AWAITING_FIRST_NAME
     
@@ -137,13 +138,13 @@ class TelegramOnboarder:
                 # Save user data to the database
                 user_data = self.temp_user_data[telegram_user_id]
                 self.db_client.insert_user(
-                        user_id=uuid.uuid4().hex,
-                        first_name=user_data.first_name,
-                        last_name=user_data.last_name,
-                        cell=user_data.cell,
-                        telegram_id=telegram_user_id,
-                        email=user_data.email,
-                    )
+                    user_id=uuid.uuid4().hex,
+                    first_name=user_data.first_name,
+                    last_name=user_data.last_name,
+                    cell=user_data.cell,
+                    telegram_id=telegram_user_id,
+                    email=user_data.email,
+                )
                 
                 await query.edit_message_text(
                     "✨ Perfect! You're all set up and ready to start tracking activities!\n\n"
