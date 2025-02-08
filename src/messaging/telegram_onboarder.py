@@ -11,8 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class OnboardingState(Enum):
-    AWAITING_FIRST_NAME = auto()
-    AWAITING_LAST_NAME = auto()
+    AWAITING_FULL_NAME = auto()
     AWAITING_EMAIL = auto()
     AWAITING_CELL = auto()
     AWAITING_CONFIRMATION = auto()
@@ -31,15 +30,32 @@ class TelegramOnboarder:
         self.db_client = db_client
         self.temp_user_data: Dict[int, UserRegistrationData] = {}
     
+    def parse_full_name(self, full_name: str) -> Tuple[bool, str, Optional[Tuple[str, str]]]:
+        """
+        Parse full name into first and last name.
+        Returns: (is_valid, error_message, (first_name, last_name))
+        """
+        # Remove extra whitespace and split
+        parts = [p for p in full_name.strip().split() if p]
+        
+        if len(parts) < 2:
+            return False, "Please enter both your first and last name.", None
+            
+        if len(parts) > 6:  # Arbitrary reasonable limit
+            return False, "The name you entered is too long. Please enter just your first and last name.", None
+            
+        # If more than 2 parts, first part is first name, last part is last name
+        first_name = parts[0]
+        last_name = " ".join(parts[1:])
+        
+        return True, "", (first_name, last_name)
+    
     def get_conversation_handler(self) -> ConversationHandler:
         return ConversationHandler(
             entry_points=[CommandHandler("register", self.start_registration)],
             states={
-                OnboardingState.AWAITING_FIRST_NAME: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_first_name)
-                ],
-                OnboardingState.AWAITING_LAST_NAME: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_last_name)
+                OnboardingState.AWAITING_FULL_NAME: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_full_name)
                 ],
                 OnboardingState.AWAITING_EMAIL: [
                     MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_email)
@@ -61,30 +77,27 @@ class TelegramOnboarder:
 
         await update.message.reply_text(
             "👋 Welcome to the Activity Tracker! Let's get you set up.\n\n"
-            "What's your first name?\n\n"
+            "What's your name? (first and last)\n\n"
             "(Use /cancel at any time to stop the registration process)"
         )
-        return OnboardingState.AWAITING_FIRST_NAME
+        return OnboardingState.AWAITING_FULL_NAME
     
-    async def handle_first_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> OnboardingState:
-        """Handle the first name input"""
+    async def handle_full_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> OnboardingState:
+        """Handle the full name input"""
         user_id = update.effective_user.id
-        first_name = update.message.text.strip()
-
+        full_name = update.message.text.strip()
+        
+        is_valid, error_msg, names = self.parse_full_name(full_name)
+        if not is_valid:
+            await update.message.reply_text(f"❌ {error_msg}")
+            return OnboardingState.AWAITING_FULL_NAME
+            
+        first_name, last_name = names
         self.temp_user_data[user_id].first_name = first_name
-
-        await update.message.reply_text("Great! Now, what's your last name?")
-        return OnboardingState.AWAITING_LAST_NAME
-    
-    async def handle_last_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> OnboardingState:
-        """Handle the last name input"""
-        user_id = update.effective_user.id
-        last_name = update.message.text.strip()
-
         self.temp_user_data[user_id].last_name = last_name
 
         await update.message.reply_text(
-            "Thanks! Please share your email address (optional - you can type 'skip' to continue)"
+            "Thanks! What's your email? (optional - you can type 'skip' to continue)"
         )
         return OnboardingState.AWAITING_EMAIL
     
