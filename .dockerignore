@@ -22,3 +22,4 @@ coverage.xml
 *.log
 .pytest_cache/
 .python-version
+database/

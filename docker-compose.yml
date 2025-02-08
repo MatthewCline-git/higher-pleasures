@@ -3,7 +3,8 @@ services:
     build: .
     volumes:
       - .:/app
-      - sqlite_data:/data/sqlite
+      - sqlite_data:/app/database 
+      - ~/.local/share/activity-bot:/data
     environment:
       - SPREADSHEET_ID=${SPREADSHEET_ID}
       - FRIEND_SHEET_NAME=${FRIEND_SHEET_NAME}

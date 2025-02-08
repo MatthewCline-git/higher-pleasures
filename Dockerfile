@@ -8,6 +8,10 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# Create database directory and set permissions
+RUN mkdir -p /app/database && \
+chown -R 1000:1000 /app/database  # Adjust UID:GID as needed
+
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
