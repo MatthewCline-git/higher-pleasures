@@ -3,6 +3,7 @@ services:
     build: .
     volumes:
       - .:/app
+      - sqlite_data:/app/database 
       - ~/.local/share/activity-bot:/data
     environment:
       - SPREADSHEET_ID=${SPREADSHEET_ID}
@@ -13,5 +14,9 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - TELEGRAM_BOT_API_KEY=${TELEGRAM_BOT_API_KEY}
       - GOOGLE_CREDENTIALS=${GOOGLE_CREDENTIALS}
+      - DATABASE_URL=/data/sqlite/higher-pleasures.db
     restart: unless-stopped
     init: true
+
+volumes:
+  sqlite_data:
