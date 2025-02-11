@@ -4,6 +4,7 @@ import sqlite3
 from contextlib import contextmanager
 from pathlib import Path
 from typing import List
+from datetime import date
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ class SQLiteClient:
                 entry_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
                 user_activity_id INTEGER NOT NULL,
-                date TEXT NOT NULL,
+                date DATE NOT NULL,
                 duration_minutes INTEGER NOT NULL,
                 raw_input TEXT NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -134,10 +135,11 @@ class SQLiteClient:
         self,
         db_user_id: int,
         user_activity_id: int,
-        date: str,
+        date: date,
         duration_minutes: int,
         raw_input: str,
     ) -> None:
+        
         with self._get_connection() as connection:
             cursor = connection.cursor()
             cursor.execute(

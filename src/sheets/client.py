@@ -10,6 +10,8 @@ from googleapiclient.discovery import build
 
 from .models import EntryType
 
+from datetime import date
+
 logger = logging.getLogger(__name__)
 
 
@@ -166,9 +168,9 @@ class GoogleSheetsClient:
             raise SheetError(f"Failed to append to sheet: {str(e)}")
 
     @retry.Retry()
-    def get_date_row_index(self, sheet_name: str, date: datetime) -> Optional[int]:
+    def get_date_row_index(self, sheet_name: str, date: date) -> Optional[int]:
         """Find the row index for a given date"""
-        date_str = datetime.fromisoformat(date).strftime("%A, %B %-d")
+        date_str = date.strftime("%A, %B %-d")
         range_name = f"{sheet_name}!A:A"
         try:
             result = (

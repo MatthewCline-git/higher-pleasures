@@ -3,7 +3,7 @@ services:
     build: .
     volumes:
       - .:/app
-      - /data:/data:rw
+      - ${DATA_PATH:-./data}:/data
     environment:
       - SPREADSHEET_ID=${SPREADSHEET_ID}
       - FRIEND_SHEET_NAME=${FRIEND_SHEET_NAME}

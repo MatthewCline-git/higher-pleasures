@@ -125,7 +125,7 @@ Return JSON with an "activities" array containing objects with:
                 {
                     "activity": activity_data["activity"],
                     "duration": activity_data["duration"],
-                    "date": activity_date.isoformat(),
+                    "date": activity_date,
                 }
             )
 
