@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 from openai import OpenAI
 
+
 # class ActivityParser(Protocol):
 #     """Protocol defining the interface for activity parsers"""
 
@@ -108,10 +109,7 @@ Return JSON with an "activities" array containing objects with:
         processed_activities = []
         current_date = datetime.now().date()
         for activity_data in result["activities"]:
-            if (
-                activity_data.get("matched_category")
-                and activity_data.get("confidence", 0) > self.confidence_threshold
-            ):
+            if activity_data.get("matched_category") and activity_data.get("confidence", 0) > self.confidence_threshold:
                 activity_data["activity"] = activity_data["matched_category"]
 
             if "date" in activity_data:

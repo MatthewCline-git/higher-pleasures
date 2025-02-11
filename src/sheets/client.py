@@ -1,8 +1,8 @@
 import json
 import logging
 import os
-from datetime import datetime, timedelta
-from typing import Generator, List, Optional, Tuple
+from collections.abc import Generator
+from datetime import date, datetime, timedelta
 
 from google.api_core import retry
 from google.oauth2 import service_account
@@ -10,7 +10,6 @@ from googleapiclient.discovery import build
 
 from .models import EntryType
 
-from datetime import date
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +17,6 @@ logger = logging.getLogger(__name__)
 class SheetError(Exception):
     """Custom exception for sheet-related errors"""
 
-    pass
 
 
 class GoogleSheetsClient:
@@ -41,15 +39,11 @@ class GoogleSheetsClient:
                 raise ValueError("GOOGLE_CREDENTIALS environment variable not found")
 
             creds_dict = json.loads(creds_json)
-            return service_account.Credentials.from_service_account_info(
-                creds_dict, scopes=self.SCOPES
-            )
+            return service_account.Credentials.from_service_account_info(creds_dict, scopes=self.SCOPES)
         except json.JSONDecodeError:
-            raise ValueError(
-                "GOOGLE_CREDENTIALS environment variable contains invalid JSON"
-            )
+            raise ValueError("GOOGLE_CREDENTIALS environment variable contains invalid JSON")
         except Exception as e:
-            raise Exception(f"Failed to initialize Google credentials: {str(e)}")
+            raise Exception(f"Failed to initialize Google credentials: {e!s}")
 
     def _build_sheets_service(self):
         """Create and return an authorized Sheets API service object"""
@@ -58,11 +52,9 @@ class GoogleSheetsClient:
             return build("sheets", "v4", credentials=creds)
         except Exception as e:
             logger.error(f"Failed to build sheets service: {e}")
-            raise SheetError(f"Could not initialize sheets service: {str(e)}")
+            raise SheetError(f"Could not initialize sheets service: {e!s}")
 
-    def initialize_year_structure(
-        self, sheet_name: str, year: Optional[int] = None, force: bool = False
-    ) -> None:
+    def initialize_year_structure(self, sheet_name: str, year: int | None = None, force: bool = False) -> None:
         """Initialize the spreadsheet with all weeks and days of the year."""
         year = year or datetime.now().year
         logger.info(f"Initializing year structure for {year}")
@@ -78,9 +70,7 @@ class GoogleSheetsClient:
 
         self._perform_initialization(sheet_name, year)
 
-    def _generate_dates(
-        self, year: int
-    ) -> Generator[Tuple[EntryType, str], None, None]:
+    def _generate_dates(self, year: int) -> Generator[tuple[EntryType, str], None, None]:
         """Generate sequence of dates and week headers for the year"""
         current_date = datetime(year, 1, 1)
         current_week = None
@@ -96,20 +86,17 @@ class GoogleSheetsClient:
             current_date += timedelta(days=1)
 
     @retry.Retry()
-    def get_current_dates(self, sheet_name: str) -> List[str]:
+    def get_current_dates(self, sheet_name: str) -> list[str]:
         """Get the current content of column A with retry logic"""
         range_name = f"{sheet_name}!A:A"
         try:
             result = (
-                self.service.spreadsheets()
-                .values()
-                .get(spreadsheetId=self.spreadsheet_id, range=range_name)
-                .execute()
+                self.service.spreadsheets().values().get(spreadsheetId=self.spreadsheet_id, range=range_name).execute()
             )
             return [row[0] for row in result.get("values", [])[1:] if row]
         except Exception as e:
             logger.error(f"Error reading current dates: {e}")
-            raise SheetError(f"Failed to read current dates: {str(e)}")
+            raise SheetError(f"Failed to read current dates: {e!s}")
 
     @retry.Retry()
     def clear_sheet(self, sheet_name) -> None:
@@ -121,15 +108,11 @@ class GoogleSheetsClient:
             ).execute()
         except Exception as e:
             logger.error(f"Error clearing sheet: {e}")
-            raise SheetError(f"Failed to clear sheet: {str(e)}")
+            raise SheetError(f"Failed to clear sheet: {e!s}")
 
-    def _validate_current_structure(
-        self, current: List[str], expected: List[str]
-    ) -> bool:
+    def _validate_current_structure(self, current: list[str], expected: list[str]) -> bool:
         """Validate if current sheet structure matches expected structure"""
-        return len(current) == len(expected) and all(
-            curr == exp for curr, exp in zip(current, expected)
-        )
+        return len(current) == len(expected) and all(curr == exp for curr, exp in zip(current, expected, strict=False))
 
     def _perform_initialization(self, sheet_name: str, year: int) -> None:
         """Perform the actual initialization of the sheet"""
@@ -151,9 +134,7 @@ class GoogleSheetsClient:
         logger.info("Sheet initialization completed successfully")
 
     @retry.Retry()
-    def append_to_sheet_formatted(
-        self, sheet_name: str, values: List[List[str]]
-    ) -> None:
+    def append_to_sheet_formatted(self, sheet_name: str, values: list[list[str]]) -> None:
         """Append rows to the sheet with retry logic"""
         try:
             self.service.spreadsheets().values().append(
@@ -165,19 +146,16 @@ class GoogleSheetsClient:
             ).execute()
         except Exception as e:
             logger.error(f"Error appending to sheet: {e}")
-            raise SheetError(f"Failed to append to sheet: {str(e)}")
+            raise SheetError(f"Failed to append to sheet: {e!s}")
 
     @retry.Retry()
-    def get_date_row_index(self, sheet_name: str, date: date) -> Optional[int]:
+    def get_date_row_index(self, sheet_name: str, date: date) -> int | None:
         """Find the row index for a given date"""
         date_str = date.strftime("%A, %B %-d")
         range_name = f"{sheet_name}!A:A"
         try:
             result = (
-                self.service.spreadsheets()
-                .values()
-                .get(spreadsheetId=self.spreadsheet_id, range=range_name)
-                .execute()
+                self.service.spreadsheets().values().get(spreadsheetId=self.spreadsheet_id, range=range_name).execute()
             )
 
             if "values" in result:
@@ -187,26 +165,23 @@ class GoogleSheetsClient:
             return None
         except Exception as e:
             logger.error(f"Error finding date row: {e}")
-            raise SheetError(f"Failed to find row for date {date_str}: {str(e)}")
+            raise SheetError(f"Failed to find row for date {date_str}: {e!s}")
 
     @retry.Retry()
-    def get_row_values(self, sheet_name: str, row_index: int) -> List[float]:
+    def get_row_values(self, sheet_name: str, row_index: int) -> list[float]:
         """Get all values for a specific row"""
         range_name = f"{sheet_name}!{row_index}:{row_index}"
         try:
             result = (
-                self.service.spreadsheets()
-                .values()
-                .get(spreadsheetId=self.spreadsheet_id, range=range_name)
-                .execute()
+                self.service.spreadsheets().values().get(spreadsheetId=self.spreadsheet_id, range=range_name).execute()
             )
             return result.get("values", [[]])[0] if "values" in result else []
         except Exception as e:
             logger.error(f"Error reading row values: {e}")
-            raise SheetError(f"Failed to read row {row_index}: {str(e)}")
+            raise SheetError(f"Failed to read row {row_index}: {e!s}")
 
     @retry.Retry()
-    def update_row(self, sheet_name: str, row_index: int, values: List[float]) -> None:
+    def update_row(self, sheet_name: str, row_index: int, values: list[float]) -> None:
         """Update an entire row with new values"""
         range_name = f"{sheet_name}!A{row_index}:{chr(65 + len(values))}{row_index}"
         try:
@@ -218,16 +193,14 @@ class GoogleSheetsClient:
             ).execute()
         except Exception as e:
             logger.error(f"Error updating row: {e}")
-            raise SheetError(f"Failed to update row {row_index}: {str(e)}")
+            raise SheetError(f"Failed to update row {row_index}: {e!s}")
 
     def process_new_entry(self, date: datetime, activity: str, duration: float) -> None:
         """Process a new activity entry with validation"""
         if duration < 0:
             raise ValueError("Duration cannot be negative")
 
-        logger.info(
-            f"Processing new entry: {activity} for {date.date()} - {duration} hours"
-        )
+        logger.info(f"Processing new entry: {activity} for {date.date()} - {duration} hours")
 
         self.update_activities_header(activity)
         date_row_index = self.get_date_row_index(date)
@@ -237,9 +210,7 @@ class GoogleSheetsClient:
 
         self._update_activity_duration(date_row_index, activity, duration)
 
-    def _update_activity_duration(
-        self, row_index: int, activity: str, duration: float
-    ) -> None:
+    def _update_activity_duration(self, row_index: int, activity: str, duration: float) -> None:
         """Update the duration for a specific activity"""
         current_values = self.get_row_values(row_index)
         activities = self.get_activity_columns()
@@ -252,14 +223,12 @@ class GoogleSheetsClient:
         self.update_row(row_index, current_values)
 
     @staticmethod
-    def _ensure_row_length(values: List[float], required_length: int) -> List[float]:
+    def _ensure_row_length(values: list[float], required_length: int) -> list[float]:
         """Ensure the row has the required length, padding with zeros if needed"""
         return values + [0] * (required_length + 1 - len(values))
 
     @retry.Retry()
-    def update_header_row(
-        self, sheet_name: str, activities: Optional[List[str]] = None
-    ) -> None:
+    def update_header_row(self, sheet_name: str, activities: list[str] | None = None) -> None:
         """Update the header row with given activities"""
         activities = activities or []
         header_row = ["Date"] + activities
@@ -274,7 +243,7 @@ class GoogleSheetsClient:
             ).execute()
         except Exception as e:
             logger.error(f"Error updating header row: {e}")
-            raise SheetError(f"Failed to update header row: {str(e)}")
+            raise SheetError(f"Failed to update header row: {e!s}")
 
     def update_activities_header(self, sheet_name, activity: str) -> None:
         """Add a new activity column if it doesn't exist"""
@@ -285,23 +254,20 @@ class GoogleSheetsClient:
             self.update_header_row(sheet_name=sheet_name, activities=activities)
 
     @retry.Retry()
-    def get_activity_columns(self, sheet_name: str) -> List[str]:
+    def get_activity_columns(self, sheet_name: str) -> list[str]:
         """Get list of activity names from the header row"""
         range_name = f"{sheet_name}!A1:Z1"
 
         try:
             result = (
-                self.service.spreadsheets()
-                .values()
-                .get(spreadsheetId=self.spreadsheet_id, range=range_name)
-                .execute()
+                self.service.spreadsheets().values().get(spreadsheetId=self.spreadsheet_id, range=range_name).execute()
             )
 
-            if "values" in result and result["values"]:
+            if result.get("values"):
                 headers = result["values"][0]
                 return headers[1:] if len(headers) > 1 else []
             return []
 
         except Exception as e:
             logger.error(f"Error reading headers: {e}")
-            raise SheetError(f"Failed to read activity columns: {str(e)}")
+            raise SheetError(f"Failed to read activity columns: {e!s}")

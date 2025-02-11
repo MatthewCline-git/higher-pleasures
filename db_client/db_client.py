@@ -2,9 +2,9 @@ import logging
 import os
 import sqlite3
 from contextlib import contextmanager
-from pathlib import Path
-from typing import List
 from datetime import date
+from pathlib import Path
+
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ class SQLiteClient:
     def _ensure_directory(self):
         """Ensure all required directories exist"""
         os.makedirs(self.database_dir_path, exist_ok=True)
-        
+
     @contextmanager
     def _get_connection(self, autocommit=True):
         conn = sqlite3.connect(self.database_path)
@@ -90,7 +90,7 @@ class SQLiteClient:
             )
             connection.commit()
 
-    def get_user_activities(self, user_id: str) -> List[str]:
+    def get_user_activities(self, user_id: str) -> list[str]:
         with self._get_connection() as connection:
             cursor = connection.cursor()
             cursor.execute(
@@ -139,7 +139,6 @@ class SQLiteClient:
         duration_minutes: int,
         raw_input: str,
     ) -> None:
-        
         with self._get_connection() as connection:
             cursor = connection.cursor()
             cursor.execute(

@@ -1,11 +1,11 @@
 import logging
-from datetime import datetime, date
-from typing import Optional
+from datetime import date, datetime
 
 from db_client.db_client import SQLiteClient
 
-from ..sheets.client import GoogleSheetsClient
 from .parser import OpenAIActivityParser
+from ..sheets.client import GoogleSheetsClient
+
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +18,8 @@ class ActivityTracker:
         sheets_client: GoogleSheetsClient,
         activity_parser: OpenAIActivityParser,
         user_sheet_mapping: dict[int, str],
-        year: Optional[int] = None,
-        db_client: Optional[SQLiteClient] = None,
+        year: int | None = None,
+        db_client: SQLiteClient | None = None,
     ):
         self.sheets_client = sheets_client
         self.activity_parser = activity_parser
@@ -29,9 +29,7 @@ class ActivityTracker:
         for sheet_name in set(user_sheet_mapping.values()):
             self.sheets_client.initialize_year_structure(sheet_name, self.year)
 
-    def track_activity(
-        self, telegram_user_id: int, message: str, db_user_id: int | None = None
-    ) -> None:
+    def track_activity(self, telegram_user_id: int, message: str, db_user_id: int | None = None) -> None:
         """Track a new activity from a natural language message"""
         sheet_name = self.user_sheet_mapping.get(telegram_user_id)
         if not sheet_name:
@@ -73,25 +71,17 @@ class ActivityTracker:
         if self.db_client is None:
             return
 
-        user_activity_id = self.db_client.get_user_activity_id_from_activity(
-            user_id=db_user_id, activity=activity
-        )
+        user_activity_id = self.db_client.get_user_activity_id_from_activity(user_id=db_user_id, activity=activity)
         if user_activity_id is None:
             user_activity_id = self.db_client.insert_activity(db_user_id, activity)
-        self.db_client.insert_entry(
-            db_user_id, user_activity_id, date, duration_minutes, raw_input
-        )
+        self.db_client.insert_entry(db_user_id, user_activity_id, date, duration_minutes, raw_input)
 
-    def process_new_entry_sheets(
-        self, sheet_name: str, date: date, activity: str, duration: float
-    ) -> None:
+    def process_new_entry_sheets(self, sheet_name: str, date: date, activity: str, duration: float) -> None:
         """Process a new activity entry with validation"""
         if duration < 0:
             raise ValueError("Duration cannot be negative")
 
-        logger.info(
-            f"Processing new entry for {sheet_name}: {activity} for {date} - {duration} hours"
-        )
+        logger.info(f"Processing new entry for {sheet_name}: {activity} for {date} - {duration} hours")
 
         self.sheets_client.update_activities_header(sheet_name, activity)
         date_row_index = self.sheets_client.get_date_row_index(sheet_name, date)
@@ -101,13 +91,9 @@ class ActivityTracker:
 
         self._update_activity_duration(sheet_name, date_row_index, activity, duration)
 
-    def _update_activity_duration(
-        self, sheet_name: str, row_index: int, activity: str, duration: float
-    ) -> None:
+    def _update_activity_duration(self, sheet_name: str, row_index: int, activity: str, duration: float) -> None:
         """Update the duration for a specific activity"""
-        current_values = self.sheets_client.get_row_values(
-            sheet_name=sheet_name, row_index=row_index
-        )
+        current_values = self.sheets_client.get_row_values(sheet_name=sheet_name, row_index=row_index)
         activities = self.sheets_client.get_activity_columns(sheet_name=sheet_name)
         activity_index = activities.index(activity) + 1
 
@@ -115,9 +101,7 @@ class ActivityTracker:
         current_duration = float(current_values[activity_index] or 0)
         current_values[activity_index] = current_duration + duration
 
-        self.sheets_client.update_row(
-            sheet_name=sheet_name, row_index=row_index, values=current_values
-        )
+        self.sheets_client.update_row(sheet_name=sheet_name, row_index=row_index, values=current_values)
 
     @staticmethod
     def _ensure_row_length(values: list[float], required_length: int) -> list[float]:

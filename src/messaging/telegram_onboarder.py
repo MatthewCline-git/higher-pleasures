@@ -3,7 +3,6 @@ import re
 import uuid
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Dict, Optional, Tuple
 
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
@@ -16,6 +15,7 @@ from telegram.ext import (
 )
 
 from db_client.db_client import SQLiteClient
+
 
 logger = logging.getLogger(__name__)
 
@@ -33,20 +33,17 @@ class UserRegistrationData:
     telegram_user_id: int
     first_name: str = ""
     last_name: str = ""
-    email: Optional[str] = None
+    email: str | None = None
     cell: str = ""
 
 
 class TelegramOnboarder:
     def __init__(self, db_client: SQLiteClient):
         self.db_client = db_client
-        self.temp_user_data: Dict[int, UserRegistrationData] = {}
+        self.temp_user_data: dict[int, UserRegistrationData] = {}
 
-    def parse_full_name(
-        self, full_name: str
-    ) -> Tuple[bool, str, Optional[Tuple[str, str]]]:
-        """
-        Parse full name into first and last name.
+    def parse_full_name(self, full_name: str) -> tuple[bool, str, tuple[str, str] | None]:
+        """Parse full name into first and last name.
         Returns: (is_valid, error_message, (first_name, last_name))
         """
         # Remove extra whitespace and split
@@ -73,33 +70,21 @@ class TelegramOnboarder:
             entry_points=[CommandHandler("register", self.start_registration)],
             states={
                 OnboardingState.AWAITING_FULL_NAME: [
-                    MessageHandler(
-                        filters.TEXT & ~filters.COMMAND, self.handle_full_name
-                    )
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_full_name)
                 ],
-                OnboardingState.AWAITING_EMAIL: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_email)
-                ],
-                OnboardingState.AWAITING_CELL: [
-                    MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_cell)
-                ],
+                OnboardingState.AWAITING_EMAIL: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_email)],
+                OnboardingState.AWAITING_CELL: [MessageHandler(filters.TEXT & ~filters.COMMAND, self.handle_cell)],
                 OnboardingState.AWAITING_CONFIRMATION: [
-                    CallbackQueryHandler(
-                        self.handle_confirmation, pattern="^(confirm|restart)$"
-                    )
+                    CallbackQueryHandler(self.handle_confirmation, pattern="^(confirm|restart)$")
                 ],
             },
             fallbacks=[CommandHandler("cancel", self.cancel_registration)],
         )
 
-    async def start_registration(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> OnboardingState:
+    async def start_registration(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> OnboardingState:
         """Start the registration process"""
         user_id = update.effective_user.id
-        self.temp_user_data[user_id] = UserRegistrationData(
-            telegram_user_id=str(user_id)
-        )
+        self.temp_user_data[user_id] = UserRegistrationData(telegram_user_id=str(user_id))
 
         await update.message.reply_text(
             "👋 Welcome to the Activity Tracker! Let's get you set up.\n\n"
@@ -108,9 +93,7 @@ class TelegramOnboarder:
         )
         return OnboardingState.AWAITING_FULL_NAME
 
-    async def handle_full_name(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> OnboardingState:
+    async def handle_full_name(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> OnboardingState:
         """Handle the full name input"""
         user_id = update.effective_user.id
         full_name = update.message.text.strip()
@@ -124,14 +107,10 @@ class TelegramOnboarder:
         self.temp_user_data[user_id].first_name = first_name
         self.temp_user_data[user_id].last_name = last_name
 
-        await update.message.reply_text(
-            "Thanks! What's your email? (optional - you can type 'skip' to continue)"
-        )
+        await update.message.reply_text("Thanks! What's your email? (optional - you can type 'skip' to continue)")
         return OnboardingState.AWAITING_EMAIL
 
-    async def handle_email(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> OnboardingState:
+    async def handle_email(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> OnboardingState:
         """Handle email input"""
         user_id = update.effective_user.id
         email = update.message.text.strip()
@@ -139,16 +118,11 @@ class TelegramOnboarder:
         if email.lower() != "skip":
             self.temp_user_data[user_id].email = email
 
-        await update.message.reply_text(
-            "Almost done! Last thing, please provide your cell number.\n"
-        )
+        await update.message.reply_text("Almost done! Last thing, please provide your cell number.\n")
         return OnboardingState.AWAITING_CELL
 
-    def validate_and_format_us_phone(
-        self, phone: str
-    ) -> Tuple[bool, str, Optional[str]]:
-        """
-        Validates and formats a US phone number.
+    def validate_and_format_us_phone(self, phone: str) -> tuple[bool, str, str | None]:
+        """Validates and formats a US phone number.
         Returns: (is_valid, error_message, formatted_number)
         Formatted number will be in E.164 format: +1XXXXXXXXXX
         """
@@ -156,8 +130,7 @@ class TelegramOnboarder:
         digits = re.sub(r"\D", "", phone)
 
         # Handle country code if provided
-        if digits.startswith("1"):
-            digits = digits[1:]
+        digits = digits.removeprefix("1")
 
         # Check if we have exactly 10 digits
         if len(digits) != 10:
@@ -172,9 +145,7 @@ class TelegramOnboarder:
         formatted = f"+1{digits}"
         return True, "", formatted
 
-    async def handle_cell(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> OnboardingState:
+    async def handle_cell(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> OnboardingState:
         """Handle cell input"""
         user_id = update.effective_user.id
         cell = update.message.text.strip()
@@ -213,9 +184,7 @@ class TelegramOnboarder:
         await update.message.reply_text(confirmation_text, reply_markup=reply_markup)
         return OnboardingState.AWAITING_CONFIRMATION
 
-    async def handle_confirmation(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def handle_confirmation(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Handle user's confirmation of their information"""
         query = update.callback_query
         await query.answer()  # Acknowledge the button click
@@ -244,29 +213,22 @@ class TelegramOnboarder:
             except Exception as e:
                 logger.error(f"Error saving user data: {e}\n\n{user_data=}")
                 await query.edit_message_text(
-                    "❌ Sorry, there was an error saving your information. "
-                    "Please try registering again with /register"
+                    "❌ Sorry, there was an error saving your information. Please try registering again with /register"
                 )
             finally:
                 del self.temp_user_data[telegram_user_id]
 
         else:
-            await query.edit_message_text(
-                "No problem! Let's start over. Use /register when you're ready."
-            )
+            await query.edit_message_text("No problem! Let's start over. Use /register when you're ready.")
             del self.temp_user_data[telegram_user_id]
 
         return ConversationHandler.END
 
-    async def cancel_registration(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> int:
+    async def cancel_registration(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         """Cancel the registration process"""
         telegram_user_id = update.effective_user.id
         if telegram_user_id in self.temp_user_data:
             del self.temp_user_data[telegram_user_id]
 
-        await update.message.reply_text(
-            "🚫 Registration cancelled. Use /register to start over."
-        )
+        await update.message.reply_text("🚫 Registration cancelled. Use /register to start over.")
         return ConversationHandler.END

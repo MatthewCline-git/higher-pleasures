@@ -2,7 +2,6 @@
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
-from typing import List
 
 
 @dataclass
@@ -10,7 +9,7 @@ class SheetEntry:
     """Represents a single row entry in the activity sheet"""
 
     date: datetime
-    values: List[float]
+    values: list[float]
 
 
 class EntryType(Enum):

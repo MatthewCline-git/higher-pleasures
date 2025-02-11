@@ -10,8 +10,9 @@ from .activities.parser import OpenAIActivityParser
 from .activities.tracker import ActivityTracker
 from .sheets.client import GoogleSheetsClient
 
+
 __all__ = [
     "ActivityTracker",
-    "OpenAIActivityParser",
     "GoogleSheetsClient",
+    "OpenAIActivityParser",
 ]
