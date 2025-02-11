@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional
 
 from db_client.db_client import SQLiteClient
@@ -65,7 +65,7 @@ class ActivityTracker:
         self,
         db_user_id: int,
         activity: str,
-        date: str,
+        date: date,
         duration_minutes: int,
         raw_input: str,
     ) -> None:
@@ -83,7 +83,7 @@ class ActivityTracker:
         )
 
     def process_new_entry_sheets(
-        self, sheet_name: str, date: datetime, activity: str, duration: float
+        self, sheet_name: str, date: date, activity: str, duration: float
     ) -> None:
         """Process a new activity entry with validation"""
         if duration < 0:
