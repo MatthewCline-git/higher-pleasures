@@ -1,9 +1,23 @@
 [tool.ruff]
-# Enable isort rules
-lint.select = ["I"] 
+line-length = 120
+target-version = "py311"
+lint.select = ["ALL"]
+lint.ignore = [
+    "D211",  # Keep blank line before class (D203)
+    "D213",  # Keep multi-line summary first line (D212)
+    "COM812", # Let the formatter handle trailing commas
+    "D203",  # Let the formatter handle blank lines before classes
+    "D415", # Don't require closing punctuation in docstrings
+    "D400", # Same as above
+]
 
+# Enforce absolute imports
+src = ["."]
+lint.extend-select = ["TID252"]  # Relative imports not allowed
+
+# Import sorting
 [tool.ruff.lint.isort]
 force-single-line = false
-section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
-combine-as-imports = true
+lines-after-imports = 2
 relative-imports-order = "closest-to-furthest"
+known-first-party = ["higher_pleasures"]  # Replace with your package name
