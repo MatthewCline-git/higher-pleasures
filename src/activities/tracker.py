@@ -1,8 +1,8 @@
 import logging
 from datetime import UTC, date, datetime
 
-from db_client.db_client import SQLiteClient
 from src.activities.parser import OpenAIActivityParser
+from src.db.client import SQLiteClient
 from src.sheets.client import GoogleSheetsClient
 
 

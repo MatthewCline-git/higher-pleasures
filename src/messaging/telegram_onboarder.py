@@ -14,7 +14,7 @@ from telegram.ext import (
     filters,
 )
 
-from db_client.db_client import SQLiteClient
+from src.db.client import SQLiteClient
 
 
 logger = logging.getLogger(__name__)

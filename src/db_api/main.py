@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from db_client.db_client import SQLiteClient
+from src.db.client import SQLiteClient
 
 
 app = FastAPI(title="Higher Pleasures Database API")

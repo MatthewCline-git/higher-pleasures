@@ -9,8 +9,8 @@ from telegram.ext import (
     filters,
 )
 
-from db_client.db_client import SQLiteClient
 from src.activities.tracker import ActivityTracker
+from src.db.client import SQLiteClient
 from src.messaging.telegram_onboarder import TelegramOnboarder
 
 
