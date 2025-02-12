@@ -9,6 +9,7 @@ lint.ignore = [
     "D203",  # Let the formatter handle blank lines before classes
     "D415", # Don't require closing punctuation in docstrings
     "D400", # Same as above
+    "TRY003", # Don't require custom exception classes with default error messages/allow long error messages to be passed into exception class
 ]
 
 # Enforce absolute imports
