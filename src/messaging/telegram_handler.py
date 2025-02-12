@@ -1,6 +1,4 @@
 import logging
-from datetime import datetime
-from typing import Callable, Optional
 
 from telegram import Update
 from telegram.ext import (
@@ -15,6 +13,7 @@ from db_client.db_client import SQLiteClient
 from src.activities.tracker import ActivityTracker
 from src.messaging.telegram_onboarder import TelegramOnboarder
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -26,13 +25,14 @@ class TelegramHandler:
         token: str,
         activity_tracker: ActivityTracker,
         db_client: SQLiteClient,
-    ):
-        """
-        Initialize the Telegram handler
+    ) -> None:
+        """Initialize the Telegram handler
 
         Args:
             token: Telegram bot token
             activity_tracker: ActivityTracker instance
+            db_client: SQLiteClient instance
+
         """
         self.token = token
         self.activity_tracker = activity_tracker
@@ -40,12 +40,10 @@ class TelegramHandler:
         self.db_client = db_client
         self.onboarder = TelegramOnboarder(db_client)
 
-    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def start(self, update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /start command"""
         if not self._is_user_allowed(update):
-            await update.message.reply_text(
-                "Welcome to your activity tracker! Send /register to get started."
-            )
+            await update.message.reply_text("Welcome to your activity tracker! Send /register to get started.")
             return
 
         await update.message.reply_text(
@@ -57,12 +55,10 @@ class TelegramHandler:
             "/status - Show your activity status for today"
         )
 
-    async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def help(self, update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /help command"""
         if not self._is_user_allowed(update):
-            await update.message.reply_text(
-                "You need to register first! Send /register to get started."
-            )
+            await update.message.reply_text("You need to register first! Send /register to get started.")
             return
 
         await update.message.reply_text(
@@ -77,22 +73,16 @@ class TelegramHandler:
             "- 'Did yoga this morning'"
         )
 
-    async def status(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def status(self, update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /status command"""
         if not self._is_user_allowed(update):
-            await update.message.reply_text(
-                "You need to register first! Send /register to get started."
-            )
+            await update.message.reply_text("You need to register first! Send /register to get started.")
             return
 
         # TODO: Implement status retrieval from sheets
-        await update.message.reply_text(
-            "🎯 Today's activities:\n(Status feature coming soon!)"
-        )
+        await update.message.reply_text("🎯 Today's activities:\n(Status feature coming soon!)")
 
-    async def track_activity(
-        self, update: Update, context: ContextTypes.DEFAULT_TYPE
-    ) -> None:
+    async def track_activity(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle incoming activity messages"""
         user_id = update.effective_user.id
         message_text = update.message.text
@@ -104,9 +94,7 @@ class TelegramHandler:
             bot_mentioned = False
             for entity in update.message.entities:
                 if entity.type == "mention":
-                    mention = message_text[
-                        entity.offset : entity.offset + entity.length
-                    ]
+                    mention = message_text[entity.offset : entity.offset + entity.length]
                     if mention == f"@{context.bot.username}":
                         bot_mentioned = True
                         message_text = message_text.replace(mention, "").strip()
@@ -118,23 +106,17 @@ class TelegramHandler:
             unauthorized_message = "❌ You don't have a configured habit tracker. Send '/register' to get started."
 
             # For group chats, only respond if the bot was explicitly mentioned
-            if is_group_chat and bot_mentioned:
-                await update.message.reply_text(unauthorized_message)
-            elif not is_group_chat:  # Private chat
+            if (is_group_chat and bot_mentioned) or not is_group_chat:
                 await update.message.reply_text(unauthorized_message)
             return
 
         try:
-            self.activity_tracker.track_activity(
-                telegram_user_id=user_id, message=message_text
-            )
+            self.activity_tracker.track_activity(telegram_user_id=user_id, message=message_text)
             await update.message.reply_text("✅ Activity tracked!")
 
-        except Exception as e:
-            logger.error(f"Error tracking activity: {e}")
-            await update.message.reply_text(
-                "❌ Sorry, I couldn't track that activity. Please try again."
-            )
+        except Exception:
+            logger.exception("Error tracking activity")
+            await update.message.reply_text("❌ Sorry, I couldn't track that activity. Please try again.")
 
     def _is_user_allowed(self, update: Update) -> bool:
         """Check if the user is allowed to use the bot"""
@@ -143,7 +125,6 @@ class TelegramHandler:
 
     def start_polling(self) -> None:
         """Start the bot polling for messages"""
-
         # Register handlers with modified filters
         self.application.add_handler(self.onboarder.get_conversation_handler())
         self.application.add_handler(CommandHandler("start", self.start))
@@ -153,11 +134,7 @@ class TelegramHandler:
         # Add handler for both private and group messages
         self.application.add_handler(
             MessageHandler(
-                (
-                    filters.TEXT
-                    & ~filters.COMMAND
-                    & (filters.ChatType.GROUPS | filters.ChatType.PRIVATE)
-                ),
+                (filters.TEXT & ~filters.COMMAND & (filters.ChatType.GROUPS | filters.ChatType.PRIVATE)),
                 self.track_activity,
             )
         )

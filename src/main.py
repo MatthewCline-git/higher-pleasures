@@ -8,11 +8,10 @@ from src.activities.parser import OpenAIActivityParser
 from src.activities.tracker import ActivityTracker
 from src.logging.logging_config import setup_logging
 from src.messaging.telegram_handler import TelegramHandler
-from src.messaging.telegram_onboarder import TelegramOnboarder
 from src.sheets.client import GoogleSheetsClient
 
 
-def load_config():
+def load_config() -> None:
     """Load configuration from environment variables"""
     load_dotenv()
 
@@ -23,21 +22,19 @@ def load_config():
         "FRIEND_TELEGRAM_ID": os.getenv("FRIEND_TELEGRAM_ID"),
         "MY_TELEGRAM_ID": os.getenv("MY_TELEGRAM_ID"),
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
-        "TELEGRAM_BOT_API_KEY": os.getenv("TELEGRAM_TEST_BOT_API_KEY")
-        or os.getenv("TELEGRAM_BOT_API_KEY"),
+        "TELEGRAM_BOT_API_KEY": os.getenv("TELEGRAM_TEST_BOT_API_KEY") or os.getenv("TELEGRAM_BOT_API_KEY"),
         "GOOGLE_CREDENTIALS": os.getenv("GOOGLE_CREDENTIALS"),
     }
 
     missing = [k for k, v in required_vars.items() if not v]
     if missing:
-        raise EnvironmentError(
-            f"Missing required environment variables: {', '.join(missing)}"
-        )
+        raise OSError(f"Missing required environment variables: {', '.join(missing)}")
 
     return required_vars
 
 
-def main():
+# ruff: noqa: D103
+def main() -> None:
     setup_logging()
     logger = logging.getLogger(__name__)
     logger.info("Starting Higher Pleasures Bot")
@@ -55,9 +52,7 @@ def main():
 
     db_client = SQLiteClient()
 
-    activity_parser = OpenAIActivityParser(
-        api_key=config["OPENAI_API_KEY"], confidence_threshold=0.7
-    )
+    activity_parser = OpenAIActivityParser(api_key=config["OPENAI_API_KEY"], confidence_threshold=0.7)
 
     tracker = ActivityTracker(
         sheets_client=sheets_client,

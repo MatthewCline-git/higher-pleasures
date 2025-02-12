@@ -1,7 +1,8 @@
 import json
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from openai import OpenAI
+
 
 # class ActivityParser(Protocol):
 #     """Protocol defining the interface for activity parsers"""
@@ -12,11 +13,12 @@ from openai import OpenAI
 
 
 class OpenAIActivityParser:
-    def __init__(self, api_key: str, confidence_threshold: float = 0.7):
+    def __init__(self, api_key: str, confidence_threshold: float = 0.7) -> None:
         self.client = OpenAI(api_key=api_key)
         self.confidence_threshold = confidence_threshold
 
-    def _generate_system_prompt(self, existing_activities) -> str:
+    def _generate_system_prompt(self, existing_activities: list[str]) -> str:
+        # ruff: noqa: E501
         return f"""Extract activities, their durations, and dates from the message. Multiple activities may be mentioned.
 Existing activity categories are: {", ".join(existing_activities)}
 
@@ -90,7 +92,7 @@ Return JSON with an "activities" array containing objects with:
 - days_ago: Integer for relative dates (today = 0, yesterday = 1, etc.)
 - date: "MM/DD" string for explicit dates (only include if an explicit date was given)"""
 
-    def parse_message(self, message: str, existing_activities) -> list:
+    def parse_message(self, message: str, existing_activities: list[str]) -> list:
         """Parse a natural language message into multiple activities and durations"""
         response = self.client.chat.completions.create(
             model="gpt-3.5-turbo",
@@ -106,12 +108,9 @@ Return JSON with an "activities" array containing objects with:
         result = json.loads(response.choices[0].message.content)
 
         processed_activities = []
-        current_date = datetime.now().date()
+        current_date = datetime.now(tz=UTC).date()
         for activity_data in result["activities"]:
-            if (
-                activity_data.get("matched_category")
-                and activity_data.get("confidence", 0) > self.confidence_threshold
-            ):
+            if activity_data.get("matched_category") and activity_data.get("confidence", 0) > self.confidence_threshold:
                 activity_data["activity"] = activity_data["matched_category"]
 
             if "date" in activity_data:

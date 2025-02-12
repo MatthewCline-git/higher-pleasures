@@ -1,9 +1,34 @@
 [tool.ruff]
-# Enable isort rules
-lint.select = ["I"] 
+line-length = 120
+target-version = "py311"
+lint.select = ["ALL"]
+lint.ignore = [
+    "D211",  # Keep blank line before class (D203)
+    "D213",  # Keep multi-line summary first line (D212)
+    "COM812", # Let the formatter handle trailing commas
+    "D203",  # Let the formatter handle blank lines before classes
+    "D415", # Don't require closing punctuation in docstrings
+    "D400", # Same as above
+    "TRY003", # Don't require custom exception classes with default error messages/allow long error messages to be passed into exception class
+    "G004", # allow f strings to be passed into logging
+    "EM102", # allow f strings to be passed into exceptions
+    "EM101", # allow strings to be passed into exceptions
+    "D100", # don't enforce docstrings on modules
+    "D104", # don't enforce docstrings on public package elements
+    "D107", # don't enforce docstrings on __init__ methods
+    "D101", # don't enforce docstrings on public package elements
+    "FIX002", # allow TODO comments
+    "TD003", # allow TODO comments that aren't linked to a particular issue
+    "TD002", # allow TODO comments without authorship
+]
 
+# Enforce absolute imports
+src = ["."]
+lint.extend-select = ["TID252"]  # Relative imports not allowed
+
+# Import sorting
 [tool.ruff.lint.isort]
 force-single-line = false
-section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
-combine-as-imports = true
+lines-after-imports = 2
 relative-imports-order = "closest-to-furthest"
+known-first-party = ["higher_pleasures"]  # Replace with your package name

@@ -1,28 +1,28 @@
 import logging
-import os
 import sqlite3
+from collections.abc import Generator
 from contextlib import contextmanager
-from pathlib import Path
-from typing import List
 from datetime import date
+from pathlib import Path
+
 
 logger = logging.getLogger(__name__)
 
 
 class SQLiteClient:
-    def __init__(self, data_dir_path: Path | None = None):
+    def __init__(self, data_dir_path: Path | None = None) -> None:
         self.data_dir_path = data_dir_path or Path("/data")
         self.database_dir_path = self.data_dir_path / "db"
         self.database_path = self.database_dir_path / "higher-pleasures.db"
         self._ensure_directory()
         self._initialize_database()
 
-    def _ensure_directory(self):
+    def _ensure_directory(self) -> None:
         """Ensure all required directories exist"""
-        os.makedirs(self.database_dir_path, exist_ok=True)
-        
+        Path.mkdir(self.database_dir_path, exist_ok=True, parents=True)
+
     @contextmanager
-    def _get_connection(self, autocommit=True):
+    def _get_connection(self, *, _autocommit: bool = True) -> Generator[sqlite3.Connection, None, None]:
         conn = sqlite3.connect(self.database_path)
         conn.row_factory = sqlite3.Row
         try:
@@ -30,7 +30,7 @@ class SQLiteClient:
         finally:
             conn.close()
 
-    def _initialize_database(self):
+    def _initialize_database(self) -> None:
         with self._get_connection() as connection:
             cursor = connection.cursor()
 
@@ -70,6 +70,7 @@ class SQLiteClient:
             );
             """)
 
+    # ruff: noqa: PLR0913
     def insert_user(
         self,
         user_id: str,
@@ -83,20 +84,20 @@ class SQLiteClient:
             cursor = connection.cursor()
             cursor.execute(
                 """
-                INSERT INTO users (user_id, first_name, last_name, cell, telegram_id, email) 
+                INSERT INTO users (user_id, first_name, last_name, cell, telegram_id, email)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (user_id, first_name, last_name, cell, telegram_id, email),
             )
             connection.commit()
 
-    def get_user_activities(self, user_id: str) -> List[str]:
+    def get_user_activities(self, user_id: str) -> list[str]:
         with self._get_connection() as connection:
             cursor = connection.cursor()
             cursor.execute(
                 """
-                SELECT activity 
-                FROM activities 
+                SELECT activity
+                FROM activities
                 WHERE user_id = ?
                 """,
                 (user_id,),
@@ -108,8 +109,8 @@ class SQLiteClient:
             cursor = connection.cursor()
             cursor.execute(
                 """
-                SELECT user_activity_id 
-                FROM activities 
+                SELECT user_activity_id
+                FROM activities
                 WHERE user_id = ? AND activity = ?
                 """,
                 (user_id, activity),
@@ -122,14 +123,13 @@ class SQLiteClient:
             cursor = connection.cursor()
             cursor.execute(
                 """
-                INSERT INTO activities (user_id, activity) 
+                INSERT INTO activities (user_id, activity)
                 VALUES (?, ?)
                 """,
                 (user_id, activity),
             )
             connection.commit()
-            activity_id = cursor.lastrowid
-            return activity_id
+            return cursor.lastrowid
 
     def insert_entry(
         self,
@@ -139,12 +139,11 @@ class SQLiteClient:
         duration_minutes: int,
         raw_input: str,
     ) -> None:
-        
         with self._get_connection() as connection:
             cursor = connection.cursor()
             cursor.execute(
                 """
-                INSERT INTO entries (user_id, user_activity_id, date, duration_minutes, raw_input) 
+                INSERT INTO entries (user_id, user_activity_id, date, duration_minutes, raw_input)
                 VALUES (?, ?, ?, ?, ?)
                 """,
                 (db_user_id, user_activity_id, date, duration_minutes, raw_input),
@@ -156,8 +155,8 @@ class SQLiteClient:
             cursor = connection.cursor()
             cursor.execute(
                 """
-                SELECT user_id 
-                FROM users 
+                SELECT user_id
+                FROM users
                 WHERE telegram_id = ?
                 """,
                 (telegram_id,),
@@ -165,5 +164,6 @@ class SQLiteClient:
             result = cursor.fetchall()
             return result[0][0] if result else None
 
+    # ruff: noqa: D102
     def is_user_allowed(self, telegram_id: str) -> bool:
         return self.get_user_id_from_telegram(telegram_id) is not None
