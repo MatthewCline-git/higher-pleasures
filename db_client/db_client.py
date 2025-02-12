@@ -4,9 +4,18 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
+from typing import TypedDict
 
 
 logger = logging.getLogger(__name__)
+
+
+class Entry(TypedDict):
+    user_id: int
+    user_activity_id: int
+    date: date
+    duration_minutes: int
+    raw_input: str
 
 
 class SQLiteClient:
@@ -167,3 +176,22 @@ class SQLiteClient:
     # ruff: noqa: D102
     def is_user_allowed(self, telegram_id: str) -> bool:
         return self.get_user_id_from_telegram(telegram_id) is not None
+
+    def get_entries(self) -> list[Entry]:
+        with self._get_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT *
+                FROM entries
+                """
+            )
+            columns = [description[0] for description in cursor.description]
+            rows = cursor.fetchall()
+            entries = []
+            for row in rows:
+                entry = dict(zip(columns, row, strict=False))
+                if "date" in entry:
+                    entry["date"] = entry["date"].strftime("%Y-%m-%d")
+                entries.append(entry)
+            return entries
