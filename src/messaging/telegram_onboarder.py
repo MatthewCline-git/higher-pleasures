@@ -211,7 +211,7 @@ class TelegramOnboarder:
                     "Type /help anytime to see more examples!"
                 )
             except Exception as e:
-                logger.error(f"Error saving user data: {e}\n\n{user_data=}")
+                logger.exception(f"Error saving user data: {e}\n\n{user_data=}")
                 await query.edit_message_text(
                     "❌ Sorry, there was an error saving your information. Please try registering again with /register"
                 )

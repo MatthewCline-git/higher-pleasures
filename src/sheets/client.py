@@ -18,7 +18,6 @@ class SheetError(Exception):
     """Custom exception for sheet-related errors"""
 
 
-
 class GoogleSheetsClient:
     """Handles all Google Sheets operations"""
 
@@ -51,7 +50,7 @@ class GoogleSheetsClient:
             creds = self._get_google_credentials()
             return build("sheets", "v4", credentials=creds)
         except Exception as e:
-            logger.error(f"Failed to build sheets service: {e}")
+            logger.exception("Failed to build sheets service")
             raise SheetError(f"Could not initialize sheets service: {e!s}")
 
     def initialize_year_structure(self, sheet_name: str, year: int | None = None, force: bool = False) -> None:
@@ -95,7 +94,7 @@ class GoogleSheetsClient:
             )
             return [row[0] for row in result.get("values", [])[1:] if row]
         except Exception as e:
-            logger.error(f"Error reading current dates: {e}")
+            logger.exception("Error reading current dates")
             raise SheetError(f"Failed to read current dates: {e!s}")
 
     @retry.Retry()
@@ -107,7 +106,7 @@ class GoogleSheetsClient:
                 spreadsheetId=self.spreadsheet_id, body={"ranges": [clear_range]}
             ).execute()
         except Exception as e:
-            logger.error(f"Error clearing sheet: {e}")
+            logger.exception("Error clearing sheet")
             raise SheetError(f"Failed to clear sheet: {e!s}")
 
     def _validate_current_structure(self, current: list[str], expected: list[str]) -> bool:
@@ -145,7 +144,7 @@ class GoogleSheetsClient:
                 body={"values": values},
             ).execute()
         except Exception as e:
-            logger.error(f"Error appending to sheet: {e}")
+            logger.exception("Error appending to sheet")
             raise SheetError(f"Failed to append to sheet: {e!s}")
 
     @retry.Retry()
@@ -164,7 +163,7 @@ class GoogleSheetsClient:
                         return i + 1
             return None
         except Exception as e:
-            logger.error(f"Error finding date row: {e}")
+            logger.exception("Error finding date row")
             raise SheetError(f"Failed to find row for date {date_str}: {e!s}")
 
     @retry.Retry()
@@ -177,7 +176,7 @@ class GoogleSheetsClient:
             )
             return result.get("values", [[]])[0] if "values" in result else []
         except Exception as e:
-            logger.error(f"Error reading row values: {e}")
+            logger.exception("Error reading row values")
             raise SheetError(f"Failed to read row {row_index}: {e!s}")
 
     @retry.Retry()
@@ -192,7 +191,7 @@ class GoogleSheetsClient:
                 body={"values": [values]},
             ).execute()
         except Exception as e:
-            logger.error(f"Error updating row: {e}")
+            logger.exception("Error updating row")
             raise SheetError(f"Failed to update row {row_index}: {e!s}")
 
     def process_new_entry(self, date: datetime, activity: str, duration: float) -> None:
@@ -242,7 +241,7 @@ class GoogleSheetsClient:
                 body={"values": [header_row]},
             ).execute()
         except Exception as e:
-            logger.error(f"Error updating header row: {e}")
+            logger.exception("Error updating header row")
             raise SheetError(f"Failed to update header row: {e!s}")
 
     def update_activities_header(self, sheet_name, activity: str) -> None:
@@ -250,7 +249,7 @@ class GoogleSheetsClient:
         existing_activities = self.get_activity_columns(sheet_name=sheet_name)
         if activity not in existing_activities:
             logger.info(f"Adding new activity column: {activity}")
-            activities = existing_activities + [activity]
+            activities = [*existing_activities, activity]
             self.update_header_row(sheet_name=sheet_name, activities=activities)
 
     @retry.Retry()
@@ -266,8 +265,9 @@ class GoogleSheetsClient:
             if result.get("values"):
                 headers = result["values"][0]
                 return headers[1:] if len(headers) > 1 else []
+            # ruff: noqa: TRY300
             return []
 
         except Exception as e:
-            logger.error(f"Error reading headers: {e}")
-            raise SheetError(f"Failed to read activity columns: {e!s}")
+            logger.exception("Error reading headers")
+            raise SheetError(f"Failed to read activity columns: {e!s}") from e

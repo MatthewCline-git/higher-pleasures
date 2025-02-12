@@ -114,7 +114,7 @@ class TelegramHandler:
             await update.message.reply_text("✅ Activity tracked!")
 
         except Exception as e:
-            logger.error(f"Error tracking activity: {e}")
+            logger.exception("Error tracking activity")
             await update.message.reply_text("❌ Sorry, I couldn't track that activity. Please try again.")
 
     def _is_user_allowed(self, update: Update) -> bool:
