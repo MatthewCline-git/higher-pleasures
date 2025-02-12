@@ -43,7 +43,8 @@ class TelegramOnboarder:
         self.temp_user_data: dict[int, UserRegistrationData] = {}
 
     def parse_full_name(self, full_name: str) -> tuple[bool, str, tuple[str, str] | None]:
-        """Parse full name into first and last name.
+        """
+        Parse full name into first and last name.
 
         Returns: (is_valid, error_message, (first_name, last_name))
         """
@@ -124,7 +125,8 @@ class TelegramOnboarder:
         return OnboardingState.AWAITING_CELL
 
     def validate_and_format_us_phone(self, phone: str) -> tuple[bool, str, str | None]:
-        """Validate and formats a US phone number.
+        """
+        Validate and formats a US phone number.
 
         Returns: (is_valid, error_message, formatted_number)
         Formatted number will be in E.164 format: +1XXXXXXXXXX

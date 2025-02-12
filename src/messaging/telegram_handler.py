@@ -26,7 +26,8 @@ class TelegramHandler:
         activity_tracker: ActivityTracker,
         db_client: SQLiteClient,
     ) -> None:
-        """Initialize the Telegram handler
+        """
+        Initialize the Telegram handler
 
         Args:
             token: Telegram bot token
