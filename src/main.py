@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from db_client.db_client import SQLiteClient
 from src.activities.parser import OpenAIActivityParser
 from src.activities.tracker import ActivityTracker
-from src.logging.logging_config import setup_logging
+from src.logging_config.logging_config import setup_logging
 from src.messaging.telegram_handler import TelegramHandler
 from src.sheets.client import GoogleSheetsClient
 
