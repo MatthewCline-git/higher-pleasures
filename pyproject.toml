@@ -12,6 +12,14 @@ lint.ignore = [
     "TRY003", # Don't require custom exception classes with default error messages/allow long error messages to be passed into exception class
     "G004", # allow f strings to be passed into logging
     "EM102", # allow f strings to be passed into exceptions
+    "EM101", # allow strings to be passed into exceptions
+    "D100", # don't enforce docstrings on modules
+    "D104", # don't enforce docstrings on public package elements
+    "D107", # don't enforce docstrings on __init__ methods
+    "D101", # don't enforce docstrings on public package elements
+    "FIX002", # allow TODO comments
+    "TD003", # allow TODO comments that aren't linked to a particular issue
+    "TD002", # allow TODO comments without authorship
 ]
 
 # Enforce absolute imports
