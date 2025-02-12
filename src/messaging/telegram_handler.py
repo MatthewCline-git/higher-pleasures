@@ -25,12 +25,13 @@ class TelegramHandler:
         token: str,
         activity_tracker: ActivityTracker,
         db_client: SQLiteClient,
-    ):
+    ) -> None:
         """Initialize the Telegram handler
 
         Args:
             token: Telegram bot token
             activity_tracker: ActivityTracker instance
+            db_client: SQLiteClient instance
 
         """
         self.token = token
@@ -39,7 +40,7 @@ class TelegramHandler:
         self.db_client = db_client
         self.onboarder = TelegramOnboarder(db_client)
 
-    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def start(self, update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /start command"""
         if not self._is_user_allowed(update):
             await update.message.reply_text("Welcome to your activity tracker! Send /register to get started.")
@@ -54,7 +55,7 @@ class TelegramHandler:
             "/status - Show your activity status for today"
         )
 
-    async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def help(self, update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /help command"""
         if not self._is_user_allowed(update):
             await update.message.reply_text("You need to register first! Send /register to get started.")
@@ -72,7 +73,7 @@ class TelegramHandler:
             "- 'Did yoga this morning'"
         )
 
-    async def status(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    async def status(self, update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
         """Handle the /status command"""
         if not self._is_user_allowed(update):
             await update.message.reply_text("You need to register first! Send /register to get started.")
@@ -113,7 +114,7 @@ class TelegramHandler:
             self.activity_tracker.track_activity(telegram_user_id=user_id, message=message_text)
             await update.message.reply_text("✅ Activity tracked!")
 
-        except Exception as e:
+        except Exception:
             logger.exception("Error tracking activity")
             await update.message.reply_text("❌ Sorry, I couldn't track that activity. Please try again.")
 

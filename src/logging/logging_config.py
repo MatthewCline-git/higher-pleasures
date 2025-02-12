@@ -12,7 +12,7 @@ def setup_logging(app_name: str = "activity-bot") -> None:
 
     """
     log_dir = Path(os.getenv("LOG_DIR", "/data/logs"))
-    os.makedirs(log_dir, exist_ok=True)
+    Path.mkdir(log_dir, parents=True, exist_ok=True)
 
     # Configure root logger
     root_logger = logging.getLogger()

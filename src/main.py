@@ -11,7 +11,7 @@ from src.messaging.telegram_handler import TelegramHandler
 from src.sheets.client import GoogleSheetsClient
 
 
-def load_config():
+def load_config() -> None:
     """Load configuration from environment variables"""
     load_dotenv()
 
@@ -33,7 +33,8 @@ def load_config():
     return required_vars
 
 
-def main():
+# ruff: noqa: D103
+def main() -> None:
     setup_logging()
     logger = logging.getLogger(__name__)
     logger.info("Starting Higher Pleasures Bot")

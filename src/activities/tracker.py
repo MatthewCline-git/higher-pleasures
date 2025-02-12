@@ -1,10 +1,9 @@
 import logging
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 from db_client.db_client import SQLiteClient
-
-from .parser import OpenAIActivityParser
-from ..sheets.client import GoogleSheetsClient
+from src.activities.parser import OpenAIActivityParser
+from src.sheets.client import GoogleSheetsClient
 
 
 logger = logging.getLogger(__name__)
@@ -20,10 +19,10 @@ class ActivityTracker:
         user_sheet_mapping: dict[int, str],
         year: int | None = None,
         db_client: SQLiteClient | None = None,
-    ):
+    ) -> None:
         self.sheets_client = sheets_client
         self.activity_parser = activity_parser
-        self.year = year or datetime.now().year
+        self.year = year or datetime.now(tz=UTC).year
         self.db_client = db_client
         self.user_sheet_mapping = user_sheet_mapping
         for sheet_name in set(user_sheet_mapping.values()):
