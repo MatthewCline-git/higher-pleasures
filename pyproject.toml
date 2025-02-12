@@ -21,6 +21,7 @@ lint.ignore = [
     "TD003", # allow TODO comments that aren't linked to a particular issue
     "TD002", # allow TODO comments without authorship
     "D413", # don't require blank line at end of docstring
+    "ERA001", # allow commented-out code
 ]
 
 # Enforce absolute imports
