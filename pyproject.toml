@@ -11,6 +11,7 @@ lint.ignore = [
     "D400", # Same as above
     "TRY003", # Don't require custom exception classes with default error messages/allow long error messages to be passed into exception class
     "G004", # allow f strings to be passed into logging
+    "EM102", # allow f strings to be passed into exceptions
 ]
 
 # Enforce absolute imports
