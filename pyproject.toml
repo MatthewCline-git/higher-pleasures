@@ -4,7 +4,7 @@ target-version = "py311"
 lint.select = ["ALL"]
 lint.ignore = [
     "D211",  # Keep blank line before class (D203)
-    "D213",  # Keep multi-line summary first line (D212)
+    "D212",  # Keep line break for first line of docstring
     "COM812", # Let the formatter handle trailing commas
     "D203",  # Let the formatter handle blank lines before classes
     "D415", # Don't require closing punctuation in docstrings
@@ -20,6 +20,7 @@ lint.ignore = [
     "FIX002", # allow TODO comments
     "TD003", # allow TODO comments that aren't linked to a particular issue
     "TD002", # allow TODO comments without authorship
+    "D413", # don't require blank line at end of docstring
 ]
 
 # Enforce absolute imports
