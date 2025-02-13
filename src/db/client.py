@@ -4,17 +4,17 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
-from typing import TypedDict
+from typing import Any, TypedDict
 
 
 logger = logging.getLogger(__name__)
 
 
 class Entry(TypedDict):
-    user_id: int
+    user_id: str
     user_activity_id: int
     date: date
-    duration_minutes: int
+    duration_minutes: Any
     raw_input: str
 
 
@@ -192,6 +192,6 @@ class SQLiteClient:
             for row in rows:
                 entry = dict(zip(columns, row, strict=False))
                 if "date" in entry:
-                    entry["date"] = entry["date"].strftime("%Y-%m-%d")
+                    entry["date"] = entry["date"]
                 entries.append(entry)
             return entries

@@ -25,15 +25,20 @@ class User(UserBase):
 
 
 class Entry(BaseModel):
-    user_id: int
+    user_id: str
     user_activity_id: int
     date: date
     duration_minutes: int
     raw_input: str
 
 
+class HealthStatus(BaseModel):
+    status: str
+    version: str
+
+
 @router.get("/health")
-async def heath_check() -> dict[str, str]:
+async def heath_check() -> HealthStatus:
     """Return health status of the API."""
     return {"status": "healthy", "version": "0.1.0"}
 
