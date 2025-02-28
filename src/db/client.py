@@ -191,7 +191,23 @@ class SQLiteClient:
             entries = []
             for row in rows:
                 entry = dict(zip(columns, row, strict=False))
-                if "date" in entry:
-                    entry["date"] = entry["date"]
+                entries.append(entry)
+            return entries
+
+    def get_user_entries(self) -> list[Entry]:
+        with self._get_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute(
+                """
+                SELECT *
+                FROM entries
+                WHERE user_id = ?
+                """
+            )
+            columns = [description[0] for description in cursor.description]
+            rows = cursor.fetchall()
+            entries = []
+            for row in rows:
+                entry = dict(zip(columns, row, strict=False))
                 entries.append(entry)
             return entries
