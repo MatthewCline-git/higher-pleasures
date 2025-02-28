@@ -38,7 +38,7 @@ async def get_entries() -> list[Entry]:
     return db_client.get_entries()
 
 
-@router.get("/entries/{user_id}")
+@router.get("/{user_id}/entries")
 async def get_user_entries(user_id: str) -> list[Entry]:
     """Return all entries for a specific user."""
     return db_client.get_user_entries(user_id)
