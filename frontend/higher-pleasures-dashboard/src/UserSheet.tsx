@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { userStatsService } from "./services/api";
-import { Entry } from "./services/api/userStats";
+import { Entry } from "./services/api/dbService";
 
 function UserSheet() {
   const [loading, setLoading] = useState(true);
@@ -33,10 +33,11 @@ function UserSheet() {
       <ul>
         {userEntries.map((entry) => (
           <li key={entry.user_activity_id}>
-            <strong>User ID: {entry.user_id}</strong> -
-            {new Date(entry.date).toLocaleDateString()}:{entry.duration_minutes}{" "}
-            minutes
-            <p>Activity: {entry.raw_input}</p>
+            <strong>User ID: {entry.user_id}</strong> - did{" "}
+            {entry.user_activity_id} on{" "}
+            {new Date(entry.date).toLocaleDateString()} for{" "}
+            {entry.duration_minutes} minutes
+            <p>Raw input: {entry.raw_input}</p>
           </li>
         ))}
       </ul>

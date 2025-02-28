@@ -8,7 +8,7 @@ export interface Entry {
   raw_input: string;
 }
 
-const userStatsService = {
+const dbService = {
   getAllEntries: async (): Promise<Entry[]> => {
     return apiClient.get("/db/entries");
   },
@@ -17,4 +17,4 @@ const userStatsService = {
   },
 };
 
-export default userStatsService;
+export default dbService;
