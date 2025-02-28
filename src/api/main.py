@@ -1,5 +1,6 @@
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
 from pydantic import BaseModel
 
 from src.api.routers import db
@@ -30,6 +31,7 @@ async def heath_check() -> HealthStatus:
 
 # api_v1.include_router(auth.router)
 api_v1.include_router(db.router)
+
 
 app.include_router(api_v1)
 
