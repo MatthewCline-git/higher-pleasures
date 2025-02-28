@@ -32,18 +32,13 @@ class Entry(BaseModel):
     raw_input: str
 
 
-class HealthStatus(BaseModel):
-    status: str
-    version: str
-
-
-@router.get("/health")
-async def heath_check() -> HealthStatus:
-    """Return health status of the API."""
-    return {"status": "healthy", "version": "0.1.0"}
-
-
 @router.get("/entries")
 async def get_entries() -> list[Entry]:
     """Return all entries in entries table."""
     return db_client.get_entries()
+
+
+@router.get("/entries/{user_id}")
+async def get_user_entries(user_id: str) -> list[Entry]:
+    """Return all entries for a specific user."""
+    return db_client.get_user_entries(user_id)
