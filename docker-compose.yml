@@ -18,6 +18,20 @@ services:
     restart: unless-stopped
     init: true
     user: "1000:1000"
+  db_api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - ${DATA_PATH:-./data}:/data
+    environment:
+      - DATABASE_URL=/data/db/higher-pleasures.db
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    depends_on:
+      - activity-bot
+    init: true
+    user: "1000:1000"
 
 volumes:
   activity_data:

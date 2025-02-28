@@ -1,8 +1,8 @@
 import logging
 from datetime import UTC, date, datetime
 
-from db_client.db_client import SQLiteClient
 from src.activities.parser import OpenAIActivityParser
+from src.db.client import SQLiteClient
 from src.sheets.client import GoogleSheetsClient
 
 
@@ -54,7 +54,7 @@ class ActivityTracker:
                     db_user_id=db_user_id,
                     activity=activity["activity"],
                     date=activity["date"],
-                    duration_minutes=activity["duration"] * 60,
+                    duration_minutes=int(round(activity["duration"] * 60)),
                     raw_input=message,
                 )
 

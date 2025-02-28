@@ -1,4 +1,5 @@
-"""Higher Pleasures - A natural language activity tracker.
+"""
+Higher Pleasures - A natural language activity tracker.
 
 This package provides functionality for tracking activities using natural language
 processing and storing the data in Google Sheets.

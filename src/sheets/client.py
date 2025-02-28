@@ -29,7 +29,8 @@ class GoogleSheetsClient:
         self,
         spreadsheet_id: str,
     ) -> None:
-        """Initialize the SheetsClient with the given spreadsheet ID.
+        """
+        Initialize the SheetsClient with the given spreadsheet ID.
 
         Args:
             spreadsheet_id (str): The ID of the spreadsheet to interact with.

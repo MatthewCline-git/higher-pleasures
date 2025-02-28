@@ -7,7 +7,9 @@ venv/
 *$py.class
 *.pyc
 __pycache__/
-**/__pycache__/
+*/__pycache__/
+*/**/__pycache__/
 database/
 data/
 todo.md
+Containers/

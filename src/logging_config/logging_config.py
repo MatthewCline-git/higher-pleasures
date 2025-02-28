@@ -5,7 +5,8 @@ from pathlib import Path
 
 
 def setup_logging(app_name: str = "activity-bot") -> None:
-    """Configure application logging
+    """
+    Configure application logging
 
     Args:
         app_name: Name to use for log files
