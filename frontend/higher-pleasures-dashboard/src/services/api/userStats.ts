@@ -9,6 +9,9 @@ export interface Entry {
 }
 
 const userStatsService = {
+  getAllEntries: async (): Promise<Entry[]> => {
+    return apiClient.get("/db/entries");
+  },
   getUserEntries: async (userId: string): Promise<Entry[]> => {
     return apiClient.get(`/db/${userId}/entries`);
   },
