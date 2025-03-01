@@ -1,5 +1,3 @@
-import { error, warn } from "console";
-
 const logger = {
   debug: (message: string, data?: any): void => {
     console.debug(`${message}`, data ? data : "");
