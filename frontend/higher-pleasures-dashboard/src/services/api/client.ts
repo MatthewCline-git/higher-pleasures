@@ -1,5 +1,7 @@
 import axios from "axios";
+import logger from "../../utils/logger";
 
+const apiLogger = logger.component("API");
 const BASE_API_URL = process.env.BASE_API_URL || "http://localhost:8000";
 const apiClient = axios.create({
   baseURL: BASE_API_URL,
@@ -12,20 +14,35 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     // add auth here later
+    apiLogger.debug("Request", {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+    });
     return config;
   },
   (error) => {
+    apiLogger.error("Request error", error);
     return Promise.reject(error);
   },
 );
 
 apiClient.interceptors.response.use(
   (response) => {
+    apiLogger.debug("Response succes", {
+      method: response.config.method?.toUpperCase(),
+      url: response.config.url,
+      status: response.status,
+    });
     return response.data;
   },
   (error) => {
     // add some error handling
-    console.error("API Error:", error);
+    apiLogger.error("Response error", {
+      method: error.config?.method?.toUpperCase(),
+      url: error.config?.url,
+      status: error.response?.status,
+      message: error.message,
+    });
     return Promise.reject(error);
   },
 );
