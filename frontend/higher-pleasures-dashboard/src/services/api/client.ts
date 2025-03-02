@@ -2,6 +2,8 @@ import axios from "axios";
 import logger from "../../utils/logger";
 
 const apiLogger = logger.component("API");
+const env_var = import.meta.env.VITE_BASE_API_URL;
+console.log("env_var", env_var);
 const BASE_API_URL =
   import.meta.env.VITE_BASE_API_URL || "http://localhost:8000";
 const apiClient = axios.create({
