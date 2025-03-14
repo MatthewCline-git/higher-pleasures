@@ -54,7 +54,7 @@ class ActivityTracker:
                     db_user_id=db_user_id,
                     activity=activity["activity"],
                     date=activity["date"],
-                    duration_minutes=int(round(activity["duration"] * 60)),
+                    duration_minutes=int(round(activity["duration"] * 60)),  # noqa: RUF046
                     raw_input=message,
                 )
 
