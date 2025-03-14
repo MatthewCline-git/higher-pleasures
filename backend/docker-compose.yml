@@ -30,11 +30,15 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - TELEGRAM_BOT_API_KEY=${TELEGRAM_BOT_API_KEY}
       - GOOGLE_CREDENTIALS=${GOOGLE_CREDENTIALS}
-      - DATABASE_URL=/data/db/higher-pleasures.db
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/higher_pleasures
       - LOG_DIR=/data/logs
     restart: unless-stopped
     init: true
     user: "1000:1000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   db_api:
     build: .
     ports:
@@ -43,13 +47,16 @@ services:
       - .:/app
       - ${DATA_PATH:-./data}:/data
     environment:
-      - DATABASE_URL=/data/db/higher-pleasures.db
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/higher_pleasures
     command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       - activity-bot
+      - postgres
     init: true
     user: "1000:1000"
 
 volumes:
   activity_data:
     name: activity_bot_data
+  postgres_data:
+    name: higher_pleasures_postgres_data
