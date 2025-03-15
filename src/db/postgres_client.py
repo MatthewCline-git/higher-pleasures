@@ -29,8 +29,8 @@ class PostgresClient:
 
     @contextmanager
     def _get_connection(self) -> Generator[psycopg2.extensions.connection, None, None]:
-        conn = psycopg2.connect(self.database_url)
         try:
+            conn = psycopg2.connect(self.database_url)
             yield conn
         finally:
             conn.close()
@@ -151,7 +151,7 @@ class PostgresClient:
                 """,
                 (db_user_id, user_activity_id, date, duration_minutes, raw_input),
             )
-        connection.commit()
+            connection.commit()
 
     def get_user_id_from_telegram(self, telegram_id: int) -> str:
         with self._get_connection() as connection, connection.cursor() as cursor:
