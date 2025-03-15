@@ -212,3 +212,33 @@ class SQLiteClient:
                 entry = dict(zip(columns, row, strict=False))
                 entries.append(entry)
             return entries
+
+    ### MIGRATION ZONE ###
+    def export_all_users(self) -> list[dict]:
+        """Export all users from SQLite database."""
+        with self._get_connection() as connection, connection.cursor() as cursor, connection.cursor() as cursor:
+            cursor.execute("SELECT user_id, first_name, last_name, email, cell, telegram_id, created_at FROM users")
+            columns = [description[0] for description in cursor.description]
+            rows = cursor.fetchall()
+            return [dict(zip(columns, row, strict=False)) for row in rows]
+
+    def export_all_activities(self) -> list[dict]:
+        """Export all activities from SQLite database."""
+        with self._get_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute("SELECT user_activity_id, user_id, activity, created_at FROM activities")
+            columns = [description[0] for description in cursor.description]
+            rows = cursor.fetchall()
+            return [dict(zip(columns, row, strict=False)) for row in rows]
+
+    def export_all_entries(self) -> list[dict]:
+        """Export all entries from SQLite database."""
+        with self._get_connection() as connection:
+            cursor = connection.cursor()
+            cursor.execute("""
+                SELECT entry_id, user_id, user_activity_id, date, duration_minutes, raw_input, created_at
+                FROM entries
+            """)
+            columns = [description[0] for description in cursor.description]
+            rows = cursor.fetchall()
+            return [dict(zip(columns, row, strict=False)) for row in rows]
