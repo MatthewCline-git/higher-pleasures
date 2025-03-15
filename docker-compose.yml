@@ -31,7 +31,7 @@ services:
       - TELEGRAM_BOT_API_KEY=${TELEGRAM_BOT_API_KEY}
       - GOOGLE_CREDENTIALS=${GOOGLE_CREDENTIALS}
       - DATABASE_URL=/data/db/higher-pleasures.db
-      - POSTGRES_URL=postgresql://postgres:postgres@postgres:5432/higher_pleasures
+      - DEV_POSTGRES_URL=postgresql://postgres:postgres@postgres:5432/higher_pleasures
       - LOG_DIR=/data/logs
     restart: unless-stopped
     init: true
@@ -48,7 +48,7 @@ services:
       - ${DATA_PATH:-./data}:/data
     environment:
       - DATABASE_URL=/data/db/higher-pleasures.db
-      - POSTGRES_URL=postgresql://postgres:postgres@postgres:5432/higher_pleasures
+      - DEV_POSTGRES_URL=postgresql://postgres:postgres@postgres:5432/higher_pleasures
     command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
     depends_on:
       - activity-bot
