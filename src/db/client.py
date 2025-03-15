@@ -4,7 +4,7 @@ from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import date
 from pathlib import Path
-from typing import Any, TypedDict
+from typing import TypedDict
 
 
 logger = logging.getLogger(__name__)
@@ -14,7 +14,7 @@ class Entry(TypedDict):
     user_id: str
     user_activity_id: int
     date: date
-    duration_minutes: Any
+    duration_minutes: int
     raw_input: str
 
 
@@ -50,7 +50,7 @@ class SQLiteClient:
                 last_name TEXT NOT NULL,
                 email TEXT,
                 cell TEXT NOT NULL,
-                telegram_id TEXT NOT NULL,
+                telegram_id INTEGER NOT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             );
             """)
@@ -86,7 +86,7 @@ class SQLiteClient:
         first_name: str,
         last_name: str,
         cell: str,
-        telegram_id: str,
+        telegram_id: int,
         email: str | None = None,
     ) -> None:
         with self._get_connection() as connection:
@@ -124,10 +124,10 @@ class SQLiteClient:
                 """,
                 (user_id, activity),
             )
-            result = cursor.fetchall()
-            return result[0][0] if result else None
+            result: list[tuple[int]] = cursor.fetchall()
+            return result[0][0]
 
-    def insert_activity(self, user_id: str, activity: str) -> None:
+    def insert_activity(self, user_id: str, activity: str) -> int:
         with self._get_connection() as connection:
             cursor = connection.cursor()
             cursor.execute(
@@ -137,12 +137,22 @@ class SQLiteClient:
                 """,
                 (user_id, activity),
             )
+            row_id = cursor.lastrowid
+            cursor.execute(
+                """
+                SELECT user_activity_id
+                FROM activities
+                WHERE rowid = ?
+                """,
+                (row_id,),
+            )
+            result = cursor.fetchone()
             connection.commit()
-            return cursor.lastrowid
+            return result[0]
 
     def insert_entry(
         self,
-        db_user_id: int,
+        db_user_id: str,
         user_activity_id: int,
         date: date,
         duration_minutes: int,
@@ -159,7 +169,7 @@ class SQLiteClient:
             )
             connection.commit()
 
-    def get_user_id_from_telegram(self, telegram_id: str) -> str:
+    def get_user_id_from_telegram(self, telegram_id: int) -> str | None:
         with self._get_connection() as connection:
             cursor = connection.cursor()
             cursor.execute(
@@ -174,7 +184,7 @@ class SQLiteClient:
             return result[0][0] if result else None
 
     # ruff: noqa: D102
-    def is_user_allowed(self, telegram_id: str) -> bool:
+    def is_user_allowed(self, telegram_id: int) -> bool:
         return self.get_user_id_from_telegram(telegram_id) is not None
 
     def get_entries(self) -> list[Entry]:
@@ -194,7 +204,7 @@ class SQLiteClient:
                 entries.append(entry)
             return entries
 
-    def get_user_entries(self, user_id: int) -> list[Entry]:
+    def get_user_entries(self, user_id: str) -> list[Entry]:
         with self._get_connection() as connection:
             cursor = connection.cursor()
             cursor.execute(

@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import TypedDict
 
 from dotenv import load_dotenv
 
@@ -11,7 +12,21 @@ from src.messaging.telegram_handler import TelegramHandler
 from src.sheets.client import GoogleSheetsClient
 
 
-def load_config() -> None:
+class AppConfig(TypedDict):
+    """Configuration for the application"""
+
+    SPREADSHEET_ID: str
+    FRIEND_SHEET_NAME: str
+    MY_SHEET_NAME: str
+    FRIEND_TELEGRAM_ID: str
+    MY_TELEGRAM_ID: str
+    OPENAI_API_KEY: str
+    TELEGRAM_BOT_API_KEY: str
+    GOOGLE_CREDENTIALS: str
+    POSTGRES_URL: str
+
+
+def load_config() -> AppConfig:
     """Load configuration from environment variables"""
     load_dotenv()
 
@@ -24,12 +39,15 @@ def load_config() -> None:
         "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
         "TELEGRAM_BOT_API_KEY": os.getenv("TELEGRAM_TEST_BOT_API_KEY") or os.getenv("TELEGRAM_BOT_API_KEY"),
         "GOOGLE_CREDENTIALS": os.getenv("GOOGLE_CREDENTIALS"),
+        "POSTGRES_URL": os.getenv("PROD_POSTGRES_URL") or os.getenv("DEV_POSTGRES_URL"),
     }
 
     missing = [k for k, v in required_vars.items() if not v]
     if missing:
         raise OSError(f"Missing required environment variables: {', '.join(missing)}")
 
+    # We've verified all values exist, so we can cast to the TypedDict
+    # which has no None values
     return required_vars
 
 

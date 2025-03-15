@@ -50,10 +50,10 @@ class GoogleSheetsClient:
             creds_json = self._load_google_credentials()
             creds_dict = json.loads(creds_json)
             return service_account.Credentials.from_service_account_info(creds_dict, scopes=self.SCOPES)
-        except ValueError as e:
-            raise ValueError from e
         except json.JSONDecodeError as e:
             raise ValueError("GOOGLE_CREDENTIALS environment variable contains invalid JSON") from e
+        except ValueError as e:
+            raise ValueError from e
         except Exception as e:
             raise Exception(f"Failed to initialize Google credentials: {e!s}") from e
 
@@ -142,11 +142,11 @@ class GoogleSheetsClient:
             batch.append([value])
 
             if len(batch) >= self.BATCH_SIZE:
-                self.append_to_sheet_formatted(batch)
+                self.append_to_sheet_formatted(sheet_name, batch)
                 batch = []
 
         if batch:  # Don't forget remaining entries
-            self.append_to_sheet_formatted(batch)
+            self.append_to_sheet_formatted(sheet_name, batch)
 
         logger.info("Sheet initialization completed successfully")
 
@@ -211,33 +211,6 @@ class GoogleSheetsClient:
         except Exception as e:
             logger.exception("Error updating row")
             raise SheetError(f"Failed to update row {row_index}: {e!s}") from e
-
-    def process_new_entry(self, date: datetime, activity: str, duration: float) -> None:
-        """Process a new activity entry with validation"""
-        if duration < 0:
-            raise ValueError("Duration cannot be negative")
-
-        logger.info(f"Processing new entry: {activity} for {date.date()} - {duration} hours")
-
-        self.update_activities_header(activity)
-        date_row_index = self.get_date_row_index(date)
-
-        if not date_row_index:
-            raise ValueError(f"Could not find row for date: {date}")
-
-        self._update_activity_duration(date_row_index, activity, duration)
-
-    def _update_activity_duration(self, row_index: int, activity: str, duration: float) -> None:
-        """Update the duration for a specific activity"""
-        current_values = self.get_row_values(row_index)
-        activities = self.get_activity_columns()
-        activity_index = activities.index(activity) + 1
-
-        current_values = self._ensure_row_length(current_values, activity_index)
-        current_duration = float(current_values[activity_index] or 0)
-        current_values[activity_index] = current_duration + duration
-
-        self.update_row(row_index, current_values)
 
     @staticmethod
     def _ensure_row_length(values: list[float], required_length: int) -> list[float]:

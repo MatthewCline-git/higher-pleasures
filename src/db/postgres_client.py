@@ -119,7 +119,7 @@ class PostgresClient:
                 (user_id, activity),
             )
             result = cursor.fetchone()
-            return result[0] if result else None
+            return result[0]
 
     def insert_activity(self, user_id: str, activity: str) -> int:
         with self._get_connection() as connection, connection.cursor() as cursor:
@@ -153,7 +153,7 @@ class PostgresClient:
             )
         connection.commit()
 
-    def get_user_id_from_telegram(self, telegram_id: str) -> str:
+    def get_user_id_from_telegram(self, telegram_id: int) -> str:
         with self._get_connection() as connection, connection.cursor() as cursor:
             cursor.execute(
                 """
@@ -167,7 +167,7 @@ class PostgresClient:
             return result[0] if result else None
 
     # ruff: noqa: D102
-    def is_user_allowed(self, telegram_id: str) -> bool:
+    def is_user_allowed(self, telegram_id: int) -> bool:
         return self.get_user_id_from_telegram(telegram_id) is not None
 
     def get_entries(self) -> list[Entry]:
