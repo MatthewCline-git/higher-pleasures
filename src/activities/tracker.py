@@ -3,6 +3,7 @@ from datetime import UTC, date, datetime
 
 from src.activities.parser import OpenAIActivityParser
 from src.db.client import SQLiteClient
+from src.db.postgres_client import PostgresClient
 from src.sheets.client import GoogleSheetsClient
 
 
@@ -17,8 +18,8 @@ class ActivityTracker:
         sheets_client: GoogleSheetsClient,
         activity_parser: OpenAIActivityParser,
         user_sheet_mapping: dict[int, str],
+        db_client: SQLiteClient | PostgresClient,
         year: int | None = None,
-        db_client: SQLiteClient | None = None,
     ) -> None:
         self.sheets_client = sheets_client
         self.activity_parser = activity_parser
@@ -28,7 +29,7 @@ class ActivityTracker:
         for sheet_name in set(user_sheet_mapping.values()):
             self.sheets_client.initialize_year_structure(sheet_name, self.year)
 
-    def track_activity(self, telegram_user_id: int, message: str, db_user_id: int | None = None) -> None:
+    def track_activity(self, telegram_user_id: int, message: str) -> None:
         """Track a new activity from a natural language message"""
         sheet_name = self.user_sheet_mapping.get(telegram_user_id)
         if not sheet_name:
@@ -36,9 +37,11 @@ class ActivityTracker:
 
         existing_categories = self.sheets_client.get_activity_columns(sheet_name)
 
-        if self.db_client is not None:
-            db_user_id = self.db_client.get_user_id_from_telegram(telegram_user_id)
-            existing_categories = self.db_client.get_user_activities(user_id=db_user_id)
+        db_user_id = self.db_client.get_user_id_from_telegram(telegram_user_id)
+        if db_user_id is None:
+            raise ValueError(f"No user found for {telegram_user_id=}")
+
+        existing_categories = self.db_client.get_user_activities(user_id=db_user_id)
 
         activities = self.activity_parser.parse_message(message, existing_categories)
 
@@ -49,18 +52,17 @@ class ActivityTracker:
                 activity=activity["activity"],
                 duration=activity["duration"],
             )
-            if self.db_client is not None:
-                self.process_new_entry(
-                    db_user_id=db_user_id,
-                    activity=activity["activity"],
-                    date=activity["date"],
-                    duration_minutes=int(round(activity["duration"] * 60)),  # noqa: RUF046
-                    raw_input=message,
-                )
+            self.process_new_entry(
+                db_user_id=db_user_id,
+                activity=activity["activity"],
+                date=activity["date"],
+                duration_minutes=int(round(activity["duration"] * 60)),  # noqa: RUF046
+                raw_input=message,
+            )
 
     def process_new_entry(
         self,
-        db_user_id: int,
+        db_user_id: str,
         activity: str,
         date: date,
         duration_minutes: int,

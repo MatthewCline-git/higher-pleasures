@@ -28,7 +28,7 @@ api_v1 = APIRouter(prefix="/api/v1")
 @api_v1.get("/health")
 async def heath_check() -> HealthStatus:
     """Return health status of the API."""
-    return {"status": "healthy", "version": "0.1.0"}
+    return HealthStatus(status="healthy", version="0.1.0")
 
 
 # api_v1.include_router(auth.router)

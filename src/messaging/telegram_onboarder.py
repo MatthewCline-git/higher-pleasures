@@ -87,7 +87,7 @@ class TelegramOnboarder:
     async def start_registration(self, update: Update, _context: ContextTypes.DEFAULT_TYPE) -> OnboardingState:
         """Start the registration process"""
         user_id = update.effective_user.id
-        self.temp_user_data[user_id] = UserRegistrationData(telegram_user_id=str(user_id))
+        self.temp_user_data[user_id] = UserRegistrationData(telegram_user_id=user_id)
 
         await update.message.reply_text(
             "👋 Welcome to the Activity Tracker! Let's get you set up.\n\n"

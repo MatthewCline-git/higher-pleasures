@@ -105,7 +105,10 @@ Return JSON with an "activities" array containing objects with:
             ],
             response_format={"type": "json_object"},
         )
-        result = json.loads(response.choices[0].message.content)
+        response_content = response.choices[0].message.content
+        if response_content is None:
+            raise ValueError("OpenAI response content is None")
+        result = json.loads(response_content)
 
         processed_activities = []
         current_date = datetime.now(tz=UTC).date()
