@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 
 from src.activities.parser import OpenAIActivityParser
 from src.activities.tracker import ActivityTracker
-from src.db.client import SQLiteClient
+from src.db.postgres_client import PostgresClient
 from src.logging_config.logging_config import setup_logging
 from src.messaging.telegram_handler import TelegramHandler
 from src.sheets.client import GoogleSheetsClient
@@ -68,7 +68,7 @@ def main() -> None:
         spreadsheet_id=config["SPREADSHEET_ID"],
     )
 
-    db_client = SQLiteClient()
+    db_client = PostgresClient()
 
     activity_parser = OpenAIActivityParser(api_key=config["OPENAI_API_KEY"], confidence_threshold=0.7)
 
