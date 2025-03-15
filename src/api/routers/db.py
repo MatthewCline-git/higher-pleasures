@@ -16,7 +16,7 @@ class UserBase(BaseModel):
     last_name: str
     email: str | None = None
     cell: str
-    telegram_id: str
+    telegram_id: int
 
 
 class User(UserBase):
