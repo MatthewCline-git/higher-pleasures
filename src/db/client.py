@@ -216,7 +216,8 @@ class SQLiteClient:
     ### MIGRATION ZONE ###
     def export_all_users(self) -> list[dict]:
         """Export all users from SQLite database."""
-        with self._get_connection() as connection, connection.cursor() as cursor, connection.cursor() as cursor:
+        with self._get_connection() as connection:
+            cursor = connection.cursor()
             cursor.execute("SELECT user_id, first_name, last_name, email, cell, telegram_id, created_at FROM users")
             columns = [description[0] for description in cursor.description]
             rows = cursor.fetchall()
