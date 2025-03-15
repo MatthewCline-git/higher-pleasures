@@ -3,12 +3,12 @@ from datetime import date, datetime
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from src.db.client import SQLiteClient
+from src.db.postgres_client import PostgresClient
 
 
 router = APIRouter(prefix="/db", tags=["database"])
 
-db_client = SQLiteClient()
+db_client = PostgresClient()
 
 
 class UserBase(BaseModel):
