@@ -45,7 +45,7 @@ class PostgresClient:
                     last_name TEXT NOT NULL,
                     email TEXT,
                     cell TEXT NOT NULL,
-                    telegram_id TEXT NOT NULL,
+                    telegram_id BIGINT NOT NULL,
                     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 );
                 """)
@@ -83,7 +83,7 @@ class PostgresClient:
         first_name: str,
         last_name: str,
         cell: str,
-        telegram_id: str,
+        telegram_id: int,
         email: str | None = None,
     ) -> None:
         with self._get_connection() as connection, connection.cursor() as cursor:
