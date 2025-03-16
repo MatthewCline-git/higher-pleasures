@@ -20,6 +20,13 @@ class Entry(TypedDict):
     raw_input: str
 
 
+class ActivitySummary(TypedDict):
+    full_name: str
+    activities: list[str]
+    dates: list[str]
+    date_entries: list[dict[str, str | int]]
+
+
 class PostgresClient:
     def __init__(self, database_url: str | None = None) -> None:
         self.database_url = database_url or os.environ.get("PROD_POSTGRES_URL") or os.environ.get("DEV_POSTGRES_URL")
@@ -193,6 +200,86 @@ class PostgresClient:
             )
             entries = cursor.fetchall()
             return [dict(entry) for entry in entries]
+
+    def get_user_activity_summary(self, user_id: str) -> ActivitySummary:
+        """
+        Get a user's activity statistics in a single query with dynamic activity columns.
+
+        Args:
+            user_id (str): The user ID to retrieve data for
+
+        Returns:
+            dict: A structured response with user info and activity data
+        """
+        # First, get all unique activities for this user to dynamically build the query
+        with self._get_connection() as connection, connection.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT DISTINCT activity
+                FROM activities
+                WHERE user_id = %s
+                ORDER BY activity
+                """,
+                (user_id,),
+            )
+            activities = [row[0] for row in cursor.fetchall()]
+
+            if not activities:
+                return {"full_name": None, "activities": [], "dates": [], "entries": []}
+
+            # Dynamically build the FILTER clauses for each activity
+            filter_clauses = []
+            # Ruff wants a list comprehension, but I need this to be maximally readable
+            # ruff: noqa: PERF401
+            for activity in activities:
+                filter_clauses.append(
+                    f"COALESCE(SUM(duration_minutes) FILTER (WHERE activity = '{activity}'), 0) AS \"{activity}\""
+                )
+
+            filter_sql = ", ".join(filter_clauses)
+
+            # will worry about sql injection later
+            # ruff: noqa: S608
+            query = f"""
+            WITH activity_data AS (
+                SELECT
+                    u.first_name || ' ' || u.last_name AS full_name,
+                    e.date,
+                    a.activity,
+                    e.duration_minutes
+                FROM entries e
+                JOIN activities a ON e.user_activity_id = a.user_activity_id
+                JOIN users u ON e.user_id = u.user_id
+                WHERE e.user_id = %s
+            )
+            SELECT
+                full_name,
+                date,
+                {filter_sql}
+            FROM activity_data
+            GROUP BY full_name, date
+            ORDER BY date;
+            """
+
+            cursor.execute(query, (user_id,))
+            rows = cursor.fetchall()
+
+            if not rows:
+                return {"full_name": None, "activities": activities, "dates": [], "entries": []}
+
+            # Extract dates and user name
+            full_name = rows[0][0]
+            dates = [row[1].strftime("%Y-%m-%d") for row in rows]
+
+            # Build entries in a more structured format
+            entries = []
+            for row in rows:
+                entry = {"date": row[1].strftime("%Y-%m-%d")}
+                for i, activity in enumerate(activities):
+                    entry[activity] = row[i + 2]  # +2 because first cols are full_name and date
+                entries.append(entry)
+
+            return {"full_name": full_name, "activities": activities, "dates": dates, "date_entries": entries}
 
     ### MIGRATION ZONE ###
     def import_users(self, users: list[dict]) -> None:
