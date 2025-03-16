@@ -24,7 +24,7 @@ class ActivitySummary(TypedDict):
     full_name: str
     activities: list[str]
     dates: list[str]
-    date_entries: list[dict[str, str | int]]
+    data: dict[str, dict[str, int]]
 
 
 class PostgresClient:
@@ -205,11 +205,13 @@ class PostgresClient:
         """
         Get a user's activity statistics in a single query with dynamic activity columns.
 
+        Returns data in an optimized nested structure for frontend rendering.
+
         Args:
             user_id (str): The user ID to retrieve data for
 
         Returns:
-            dict: A structured response with user info and activity data
+            ActivitySummaryImproved: A structured response with user info and activity data
         """
         # First, get all unique activities for this user to dynamically build the query
         with self._get_connection() as connection, connection.cursor() as cursor:
@@ -225,7 +227,7 @@ class PostgresClient:
             activities = [row[0] for row in cursor.fetchall()]
 
             if not activities:
-                return {"full_name": None, "activities": [], "dates": [], "entries": []}
+                return {"full_name": None, "activities": [], "dates": [], "data": {}}
 
             # Dynamically build the FILTER clauses for each activity
             filter_clauses = []
@@ -265,21 +267,25 @@ class PostgresClient:
             rows = cursor.fetchall()
 
             if not rows:
-                return {"full_name": None, "activities": activities, "dates": [], "entries": []}
+                return {"full_name": None, "activities": activities, "dates": [], "data": {}}
 
             # Extract dates and user name
             full_name = rows[0][0]
             dates = [row[1].strftime("%Y-%m-%d") for row in rows]
 
-            # Build entries in a more structured format
-            entries = []
+            # Build data in the improved nested structure
+            data = {}
             for row in rows:
-                entry = {"date": row[1].strftime("%Y-%m-%d")}
-                for i, activity in enumerate(activities):
-                    entry[activity] = row[i + 2]  # +2 because first cols are full_name and date
-                entries.append(entry)
+                date_str = row[1].strftime("%Y-%m-%d")
+                data[date_str] = {}
 
-            return {"full_name": full_name, "activities": activities, "dates": dates, "date_entries": entries}
+                for i, activity in enumerate(activities):
+                    duration = row[i + 2]  # +2 because first cols are full_name and date
+                    # Only include non-zero durations to keep the data sparse
+                    if duration > 0:
+                        data[date_str][activity] = duration
+
+            return {"full_name": full_name, "activities": activities, "dates": dates, "data": data}
 
     ### MIGRATION ZONE ###
     def import_users(self, users: list[dict]) -> None:

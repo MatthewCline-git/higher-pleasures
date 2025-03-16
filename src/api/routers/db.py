@@ -37,7 +37,7 @@ class ActivitySummary(BaseModel):
     full_name: str
     activities: list[str]
     dates: list[str]
-    date_entries: list[dict[str, str | int]]
+    data: dict[str, dict[str, int]]
 
 
 @router.get("/entries")
